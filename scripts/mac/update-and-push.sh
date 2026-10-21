@@ -2,8 +2,9 @@
 # Mise à jour complète des données depuis le Mac (Sofascore y répond, pas depuis GitHub),
 # puis commit et push de public/data : le push redéploie le site via la GitHub Action.
 # Lancé par launchd le lundi à 18 h 30 et le vendredi à 8 h (voir install.sh).
+# Il travaille dans une copie du dépôt hors de ~/Documents : macOS interdit aux tâches de fond d'y lire.
 set -u
-REPO="${0:A:h:h:h}"
+REPO="__REPO__"
 LOG="$HOME/Library/Logs/searchl1-donnees.log"
 NODE_DIR="__NODE_DIR__"
 export PATH="$NODE_DIR:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"

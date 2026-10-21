@@ -2,15 +2,25 @@
 # Installe (ou réinstalle) la tâche launchd qui met les données à jour le lundi 18 h 30 et le vendredi 8 h,
 # heure du Mac. Si le Mac dort à l'heure dite, macOS lance la tâche au réveil ; s'il est éteint, elle saute.
 # Désinstaller : launchctl bootout gui/$(id -u)/com.searchl1.donnees && rm ~/Library/LaunchAgents/com.searchl1.donnees.plist
+#   puis supprimer ~/Library/Application Support/SearchL1
 set -eu
-REPO="${0:A:h:h:h}"
+SRC="${0:A:h:h:h}"
 LABEL="com.searchl1.donnees"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 NODE_DIR="$(dirname "$(command -v node)")"
-SCRIPT="$REPO/scripts/mac/.update-and-push.local.sh"
+# macOS interdit aux tâches de fond de lire ~/Documents, ~/Desktop… : la tâche a sa propre copie du dépôt ici.
+HOME_DIR="$HOME/Library/Application Support/SearchL1"
+REPO="$HOME_DIR/depot"
+SCRIPT="$HOME_DIR/mise-a-jour.sh"
 
-# Copie locale du script avec le chemin de Node de ce Mac (launchd ne charge pas nvm).
-sed "s|__NODE_DIR__|$NODE_DIR|" "$REPO/scripts/mac/update-and-push.sh" > "$SCRIPT"
+mkdir -p "$HOME_DIR"
+if [ ! -d "$REPO/.git" ]; then
+  git clone --quiet "$(git -C "$SRC" remote get-url origin)" "$REPO"
+fi
+git -C "$REPO" pull --ff-only --quiet
+(cd "$REPO" && npm ci --silent --no-audit --no-fund)
+# Copie du script avec les chemins de ce Mac (launchd ne charge pas nvm).
+sed -e "s|__NODE_DIR__|$NODE_DIR|" -e "s|__REPO__|$REPO|" "$SRC/scripts/mac/update-and-push.sh" > "$SCRIPT"
 chmod +x "$SCRIPT"
 
 mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"

@@ -85,9 +85,9 @@ Une app installée depuis Safari ne peut pas tourner en arrière-plan sur iOS, e
 zsh scripts/mac/install.sh
 ```
 
-Installe une tâche macOS (launchd) qui, **le lundi à 18 h 30 et le vendredi à 8 h**, récupère les nouvelles données, commite `public/data` et pousse sur GitHub, ce qui redéploie le site. Si le Mac dort à l'heure dite, la tâche tourne à son réveil ; s'il est éteint, elle saute ce créneau. Journal : `~/Library/Logs/searchl1-donnees.log`. La GitHub Action passe une heure plus tard en secours (scores seulement) si le Mac n'a rien poussé.
+Installe une tâche macOS (launchd) qui, **le lundi à 18 h 30 et le vendredi à 8 h**, récupère les nouvelles données, commite `public/data` et pousse sur GitHub, ce qui redéploie le site. Si le Mac dort à l'heure dite, la tâche tourne à son réveil ; s'il est éteint, elle saute ce créneau. Journal : `~/Library/Logs/searchl1-donnees.log`. macOS interdisant aux tâches de fond de lire `~/Documents`, la tâche travaille dans sa propre copie du dépôt (`~/Library/Application Support/SearchL1/depot`) : fais `git pull` dans ton dossier pour y récupérer les données qu'elle a poussées. La GitHub Action passe une heure plus tard en secours (scores seulement) si le Mac n'a rien poussé.
 
-Désinstaller : `launchctl bootout gui/$(id -u)/com.searchl1.donnees`, puis supprimer `~/Library/LaunchAgents/com.searchl1.donnees.plist`.
+Désinstaller : `launchctl bootout gui/$(id -u)/com.searchl1.donnees`, puis supprimer `~/Library/LaunchAgents/com.searchl1.donnees.plist` et `~/Library/Application Support/SearchL1`.
 
 ## Ajouter l'app à l'écran d'accueil de l'iPhone
 
