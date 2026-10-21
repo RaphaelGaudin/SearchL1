@@ -143,6 +143,7 @@ export function Home() {
               })}
               {!absent.length && <Empty>Pas d'absent important annoncé pour l'instant.</Empty>}
             </Group>
+            <Link to="/infirmerie" className="textlink">Toute l'infirmerie ›</Link>
           </Section>
 
           <Section title="Classement" meta={`après J${d.lastRound}`}>

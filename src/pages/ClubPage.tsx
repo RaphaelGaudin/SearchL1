@@ -8,6 +8,7 @@ import { CLUBS, clubByName } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
 import { dayShort, num, POSITION, time } from '../lib/format.ts';
 import { buildTable } from '../lib/standings.ts';
+import { returnLabel } from './Injuries.tsx';
 import { ClubSeason, CupRow } from './Matches.tsx';
 
 const ABS = { B: ['down', 'Blessé'], S: ['down', 'Suspendu'], D: ['warn', 'Incertain'], C: ['neutral', 'Non retenu'] } as const;
@@ -122,7 +123,7 @@ export function ClubPage() {
             return (
               <Row key={a.player} to={p ? `/joueur/${p.id}` : undefined}>
                 <span className="grow ellipsis"><span className="strong">{p?.n ?? a.player}</span>
-                  <small className="muted block">{a.why}{p ? ` · ${p.starts} tit. · ${num(p.ptsAvg)} pts/match` : ''}</small></span>
+                  <small className="muted block">{a.why}{returnLabel(a) ? ` · ${returnLabel(a)}` : ''}{p ? ` · ${p.starts} tit. · ${num(p.ptsAvg)} pts/match` : ''}</small></span>
                 <Chip tone={ABS[a.type][0]}>{ABS[a.type][1]}</Chip>
               </Row>
             );

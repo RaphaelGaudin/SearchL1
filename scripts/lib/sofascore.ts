@@ -90,6 +90,7 @@ export interface SfMissing {
   type?: string;
   reason?: number;
   description?: string;
+  expectedEndDate?: string;
 }
 export interface SfIncident {
   incidentType: string;

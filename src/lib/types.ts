@@ -70,6 +70,8 @@ export interface Absence {
   playerId?: number;
   type: 'B' | 'S' | 'D' | 'C';
   why: string;
+  /** Date de retour prévue (ISO), si la source la donne. */
+  until?: string;
   source: string;
 }
 

@@ -193,3 +193,32 @@ test('Fiche joueur et fiche club : sections, graphique, changer de coéquipier o
   await page.locator('.club-rail .rail-item', { hasText: 'Lyon' }).click();
   await expect(page.getByRole('heading', { name: 'Lyon', level: 1 })).toBeVisible();
 });
+
+test('Infirmerie : compteurs, filtre club en un geste, recherche, absents groupés par club', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.tabbar').getByRole('button', { name: 'Plus' }).click();
+  await page.getByRole('link', { name: /Infirmerie/ }).click();
+  await expect(page.getByRole('heading', { name: 'Infirmerie', level: 1 })).toBeVisible();
+  const total = await page.locator('#root .row').count();
+  expect(total).toBeGreaterThan(0);
+  const counts = (await page.locator('.inj-tile b').allInnerTexts()).map(Number);
+  expect(counts.reduce((a, b) => a + b, 0)).toBe(total);
+  await noHorizontalOverflow(page);
+  await shot(page, '12-infirmerie');
+
+  const withAbs = page.locator('.inj-rail .rail-item:not(.none)').nth(1);
+  const club = (await withAbs.locator('.tiny').innerText()).trim();
+  const n = Number(await withAbs.locator('.inj-count').innerText());
+  await withAbs.click();
+  await expect(page.locator('.inj-club')).toHaveCount(1);
+  await expect(page.locator('.inj-club')).toContainText(club);
+  await expect(page.locator('#root .row')).toHaveCount(n);
+  await page.locator('.inj-rail .rail-item', { hasText: 'Tous' }).click();
+
+  await page.locator('.inj-tile.t-B').click();
+  await expect(page.locator('#root .row .chip-down', { hasText: 'Suspendu' })).toHaveCount(0);
+  await page.locator('.inj-tile.t-B').click();
+  const name = (await page.locator('#root .row .strong').first().innerText()).trim();
+  await page.getByPlaceholder('Joueur ou club').fill(name);
+  await expect(page.locator('#root .row').first()).toContainText(name);
+});

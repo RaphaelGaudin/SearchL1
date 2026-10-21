@@ -54,15 +54,22 @@ const INJURY_FR: [RegExp, string][] = [
   [/yellow_card/i, 'cumul de cartons'], [/red_card/i, 'carton rouge'], [/suspen/i, 'suspension'],
   [/broken ankle/i, 'fracture de la cheville'], [/ankle/i, 'cheville'], [/knee/i, 'genou'], [/cruciate|acl/i, 'ligaments croisés'],
   [/hamstring/i, 'ischio-jambiers'], [/thigh/i, 'cuisse'], [/calf/i, 'mollet'], [/groin|adductor/i, 'adducteurs'],
+  [/heel/i, 'talon'], [/toe/i, 'orteil'], [/leg\b/i, 'jambe'], [/wrist|hand|finger/i, 'main'], [/rib/i, 'côtes'], [/knock/i, 'coup'],
+  [/fracture/i, 'fracture'], [/elbow|arm\b/i, 'bras'], [/neck/i, 'cou'], [/face|nose/i, 'visage'],
   [/muscle/i, 'blessure musculaire'], [/foot/i, 'pied'], [/back/i, 'dos'], [/shoulder/i, 'épaule'], [/hip/i, 'hanche'],
   [/achilles/i, "tendon d'Achille"], [/head|concussion/i, 'commotion'], [/ill|virus|sick/i, 'malade'], [/personal/i, 'raisons personnelles'],
+  [/rested/i, 'ménagé'], [/pending_transfer/i, 'transfert en cours'], [/coach_decision/i, "choix de l'entraîneur"], [/club_decision/i, 'décision du club'],
+  [/improper_conduct/i, 'sanction disciplinaire'], [/^unknown$/i, 'blessure non précisée'], [/^other$/i, 'autre motif'],
 ];
 const frWhy = (d?: string) => (d ? (INJURY_FR.find(([re]) => re.test(d))?.[1] ?? d) : 'motif non précisé');
 
 function absenceOf(m: SfMissing, club: string): Absence {
   const d = m.description ?? '';
-  const type: Absence['type'] = m.type === 'doubtful' ? 'D' : m.reason === 11 || /suspen|card/i.test(d) ? 'S' : m.reason === 1 || /injur|broken|strain|tear/i.test(d) ? 'B' : 'C';
-  return { club, player: m.player.name, playerId: m.player.id, type, why: frWhy(d), source: 'Sofascore' };
+  // Motifs Sofascore : 1 blessure ; 3, 11, 12, 13 sanctions ; 4 et 0 autres (choix, repos, transfert…).
+  const type: Absence['type'] = m.type === 'doubtful' ? 'D'
+    : [3, 11, 12, 13].includes(m.reason ?? -1) || /suspen|card/i.test(d) ? 'S'
+    : m.reason === 1 || /injur|broken|strain|tear/i.test(d) ? 'B' : 'C';
+  return { club, player: m.player.name, playerId: m.player.id, type, why: frWhy(d), until: m.expectedEndDate, source: 'Sofascore' };
 }
 
 const clubOf = (t: { id: number; shortName: string }) => clubBySofascoreId.get(t.id)?.name ?? t.shortName;
