@@ -1,0 +1,103 @@
+name: Données et déploiement
+
+on:
+  push:
+    branches: [main]
+  # Lundi et jeudi à 18 h 30, heure de Paris. GitHub ne connaît que l'UTC :
+  # 16 h 30 UTC en heure d'été, 17 h 30 UTC en heure d'hiver ; l'étape « horaire » garde la bonne.
+  schedule:
+    - cron: '30 16 * * 1,4'
+    - cron: '30 17 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Horaire (18 h 30 à Paris)
+        id: when
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=Europe/Paris date +%H)" != "18" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            echo "Déclenchement hors de l'heure de Paris : on ne met pas les données à jour."
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache des feuilles de match Sofascore
+        if: steps.when.outputs.update == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .cache/sofascore
+          key: sofascore-${{ github.run_id }}
+          restore-keys: sofascore-
+
+      - name: Navigateur pour Sofascore
+        if: steps.when.outputs.update == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Mise à jour des données
+        id: data
+        if: steps.when.outputs.update == 'true'
+        # Si une vérification échoue, le script n'écrit rien : on déploie les anciennes données.
+        continue-on-error: true
+        run: npm run data
+
+      - name: Signaler un échec de mise à jour
+        if: steps.data.outcome == 'failure'
+        run: echo "::warning::Mise à jour des données échouée, anciennes données conservées (voir l'étape précédente)."
+
+      - run: npm test
+
+      - name: Commit des données
+        if: steps.when.outputs.update == 'true' && steps.data.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          if git diff --cached --quiet; then
+            echo "Données inchangées."
+          else
+            git commit -m "Données : mise à jour du $(TZ=Europe/Paris date '+%d/%m/%Y %H:%M')"
+            git push
+          fi
+
+      - name: Build
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
