@@ -59,6 +59,17 @@ export function pcts(p: { H: number; D: number; A: number }): [number, number, n
   return [H, 100 - H - A, A];
 }
 
+/** Sommaire collant sous la barre du haut : un geste pour aller à une section. */
+export function SubNav({ items }: { items: [string, string][] }) {
+  return (
+    <nav className="subnav" aria-label="Sommaire">
+      {items.map(([k, l]) => (
+        <a key={k} href={`#${k}`} onClick={e => { e.preventDefault(); document.getElementById(k)?.scrollIntoView({ behavior: 'smooth' }); }}>{l}</a>
+      ))}
+    </nav>
+  );
+}
+
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty muted">{children}</div>;
 }

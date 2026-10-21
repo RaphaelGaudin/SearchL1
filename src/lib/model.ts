@@ -8,6 +8,9 @@ import type { Absence, CupMatch, HistoryFile, Match, MetaFile, Player, PlayerLog
 
 export interface ScoredLog extends PlayerLog { P: MatchPoints }
 
+/** Points par entrée en jeu en dessous desquels on ne parle jamais de bon supersub. */
+export const SUPERSUB_MIN = 6;
+
 export interface PlayerStats extends Omit<Player, 'logs'> {
   logs: ScoredLog[];
   apps: number;
@@ -25,6 +28,8 @@ export interface PlayerStats extends Omit<Player, 'logs'> {
   trend: number | null;
   subAvg: number | null;
   subApps: number;
+  /** Bon supersub : au moins 2 entrées en jeu et une moyenne par entrée parmi les 10 % meilleures (6 pts minimum). */
+  superSub: boolean;
   absence: Absence | null;
 }
 
@@ -51,6 +56,8 @@ export interface Data {
   cupsAround: (club: string, iso: string) => (CupMatch & { gap: number })[];
   /** Pronostic d'un match déjà joué, tel qu'il aurait été calculé la veille. */
   predictBefore: (m: Match) => Prediction;
+  /** Classements finaux depuis 2014-15. */
+  finals: { s: string; table: TableRow[] }[];
 }
 
 export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFile): Data {
@@ -84,11 +91,15 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
       a: logs.reduce((s, L) => s + L.a, 0),
       pts: logs.reduce((s, L) => s + L.P.total, 0),
       ptsAvg, l3Avg, l3Apps: l3.length,
-      trend: ptsAvg != null && l3Avg != null && l3.length >= 2 ? l3Avg - ptsAvg : null,
-      subAvg: avg(sub), subApps: sub.length,
+      // Tendance seulement si la saison compte d'autres matchs que les 3 derniers (sinon on compare un chiffre à lui-même).
+      trend: ptsAvg != null && l3Avg != null && l3.length >= 2 && full.length > l3.length ? l3Avg - ptsAvg : null,
+      subAvg: avg(sub), subApps: sub.length, superSub: false,
       absence: absences.find(a => a.playerId === p.id) ?? null,
     };
   });
+  const subAvgs = players.filter(p => p.subApps >= 2).map(p => p.subAvg!).sort((a, b) => b - a);
+  const ssMin = Math.max(SUPERSUB_MIN, subAvgs[Math.floor(subAvgs.length * 0.1)] ?? Infinity);
+  players.forEach(p => (p.superSub = p.subApps >= 2 && p.subAvg! >= ssMin));
   const playerById = new Map(players.map(p => [p.id, p]));
 
   const absByClub = new Map<string, Absence[]>();
@@ -134,7 +145,9 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
     return predict(fit(all, t, CLUB_NAMES), m.h, m.a, { h2h: h2hOf(m), rest: restOf(m) });
   };
 
-  return { meta, season, matches, byId, rounds, lastRound, nextRound, table, prevTable, players, playerById, cupsByClub, absByClub, model, predictions, meetings, cupsAround, predictBefore };
+  const finals = history.seasons.map(S => ({ s: S.s, table: buildTable(S.m.map(r => ({ j: r[0], d: r[1], h: r[2], a: r[3], hg: r[4], ag: r[5] }))) }));
+
+  return { meta, season, matches, byId, rounds, lastRound, nextRound, table, prevTable, players, playerById, cupsByClub, absByClub, model, predictions, meetings, cupsAround, predictBefore, finals };
 }
 
 /**
@@ -162,6 +175,65 @@ function absenceFactors(players: PlayerStats[], absByClub: Map<string, Absence[]
     out[club] = { att: Math.max(0.85, 1 - (0.5 * miss) / total), def: Math.min(1.1, dm), who };
   }
   return out;
+}
+
+export type Period = 'saison' | 5 | 3 | 1;
+export const PERIODS: { k: Period; label: string; short: string }[] = [
+  { k: 'saison', label: 'Saison', short: 'Saison' }, { k: 5, label: '5 dernières journées', short: '5 J' },
+  { k: 3, label: '3 dernières journées', short: '3 J' }, { k: 1, label: 'Dernière journée', short: 'Dern. J' },
+];
+
+export interface WindowStats {
+  from: number;
+  to: number;
+  apps: number;
+  starts: number;
+  subs: number;
+  min: number;
+  g: number; pen: number; a: number; og: number; y: number; rc: number;
+  tk: number; int: number; kp: number; xg: number; xa: number; sav: number; gp: number;
+  cs: number; conc: number;
+  pts: number;
+  ptsAvg: number | null;
+  /** Moyennes par source : équipe, note, actions, défense, cartons. */
+  src: { team: number; note: number; actions: number; defense: number; cards: number };
+  noteAvg: number | null;
+  subAvg: number | null;
+  savePct: number | null;
+  /** Points par journée (null : n'a pas joué). */
+  series: (number | null)[];
+}
+
+/** Stats d'un joueur sur une période qui finit à la dernière journée jouée. */
+export function windowStats(p: PlayerStats, period: Period, lastRound: number): WindowStats {
+  const from = period === 'saison' ? 1 : Math.max(1, lastRound - period + 1);
+  const logs = p.logs.filter(L => L.j >= from && L.j <= lastRound);
+  const played = logs.filter(L => L.min > 0 || !L.lu);
+  const full = played.filter(L => L.lu);
+  const sum = (f: (L: ScoredLog) => number, ls = played) => ls.reduce((s, L) => s + f(L), 0);
+  const n = full.length;
+  const notes = full.filter(L => L.P.noteLE != null);
+  const subs = full.filter(L => L.sub);
+  const conc = sum(L => L.ga * Math.min(1, L.min / 90), full);
+  const sav = sum(L => L.sav, full);
+  return {
+    from, to: lastRound, apps: played.length, starts: full.filter(L => !L.sub).length, subs: subs.length, min: sum(L => L.min, full),
+    g: sum(L => L.g), pen: sum(L => L.pen), a: sum(L => L.a), og: sum(L => L.og), y: sum(L => L.y), rc: sum(L => L.rc),
+    tk: sum(L => L.tk, full), int: sum(L => L.int, full), kp: sum(L => L.kp, full), xg: sum(L => L.xg, full), xa: sum(L => L.xa, full),
+    sav, gp: sum(L => L.gp, full), cs: full.filter(L => L.ga === 0 && L.min >= 60).length, conc,
+    pts: sum(L => L.P.total), ptsAvg: n ? sum(L => L.P.total, full) / n : null,
+    src: {
+      team: n ? sum(L => L.P.team, full) / n : 0, note: n ? sum(L => L.P.note, full) / n : 0, actions: n ? sum(L => L.P.actions, full) / n : 0,
+      defense: n ? sum(L => L.P.defense, full) / n : 0, cards: n ? sum(L => L.P.cards, full) / n : 0,
+    },
+    noteAvg: notes.length ? notes.reduce((s, L) => s + L.P.noteLE!, 0) / notes.length : null,
+    subAvg: subs.length ? sum(L => L.P.total, subs) / subs.length : null,
+    savePct: p.pos === 'G' && sav + conc > 0 ? sav / (sav + conc) : null,
+    series: Array.from({ length: lastRound - from + 1 }, (_, i) => {
+      const L = full.find(x => x.j === from + i && x.min > 0);
+      return L ? L.P.total : null;
+    }),
+  };
 }
 
 /** Importance d'un joueur pour son club : titularisations et points par match. */

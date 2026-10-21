@@ -1,3 +1,4 @@
+import { LargeTitle, NavBar, SuperSubBadge } from '../components/Glass.tsx';
 import { Card, Group, Row, Section } from '../components/ui.tsx';
 import { BAREME } from '../lib/scoring.ts';
 
@@ -10,7 +11,8 @@ export function Bareme() {
   );
   return (
     <div className="page">
-      <div className="page-head"><h1>Calcul des points</h1></div>
+      <NavBar title="Calcul des points" back="Plus" fallback="/" />
+      <LargeTitle>Calcul des points</LargeTitle>
       <p className="small muted">Barème du Championnat des Étoiles (L'Équipe), règlement 2018-19 : dernière version publique trouvée. Les points affichés dans l'app sont des estimations.</p>
       <Section title="Points d'équipe" meta="au prorata des minutes / 90">
         <Group>
@@ -49,6 +51,7 @@ export function Bareme() {
           <Row><span className="grow">Remplaçant</span><span className="num-sm">× ½</span></Row>
           <Row><span className="grow">SuperSub, s'il entre en jeu</span><span className="num-sm">× {B.superSub}</span></Row>
         </Group>
+        <Card><p className="small"><SuperSubBadge small /> L'éclair signale un bon supersub : au moins 2 entrées en jeu et une moyenne par entrée parmi les 10 % meilleures de L1 (6 points minimum).</p></Card>
       </Section>
     </div>
   );

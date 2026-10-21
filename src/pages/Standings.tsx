@@ -4,6 +4,7 @@ import { Card, Form } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
 import { buildTable } from '../lib/standings.ts';
 import { Link } from 'react-router-dom';
+import { LargeTitle, NavBar } from '../components/Glass.tsx';
 
 const VIEWS = [['general', 'Général'], ['h', 'Domicile'], ['a', 'Extérieur']] as const;
 // Places européennes 2026-27 (indice UEFA de la France) et relégation : 1-3 LdC, 4 barrage LdC, 5 LE, 6 LC, 16 barrage, 17-18 relégués.
@@ -17,7 +18,8 @@ export function Standings() {
   const prev = new Map((d.prevTable ?? []).map(r => [r.club, r.rank]));
   return (
     <div className="page">
-      <div className="page-head"><h1>Classement</h1><span className="small muted">après J{d.lastRound}</span></div>
+      <NavBar title="Classement" />
+      <LargeTitle sub={`après J${d.lastRound}`}>Classement</LargeTitle>
       <div className="seg" role="tablist">
         {VIEWS.map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}>{l}</button>)}
       </div>
@@ -31,7 +33,7 @@ export function Standings() {
                 return (
                   <tr key={r.club} className={view === 'general' ? `z-${zone(r.rank)}` : ''}>
                     <td className="sticky l">
-                      <Link to={`/matchs?club=${encodeURIComponent(r.club)}`} className="club-cell">
+                      <Link to={`/club/${encodeURIComponent(r.club)}`} className="club-cell">
                         <span className="rank num-sm">{r.rank}</span><Crest club={r.club} size={20} /><span className="strong">{r.club}</span>
                         {mv !== 0 && <span className={`mv ${mv > 0 ? 'up' : 'down'}`}>{mv > 0 ? '▲' : '▼'}{Math.abs(mv)}</span>}
                       </Link>

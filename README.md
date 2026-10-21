@@ -2,7 +2,12 @@
 
 Web app (PWA installable sur iPhone) pour consulter les stats de la Ligue 1 2026-27 et choisir ses joueurs au **Championnat des Étoiles** (L'Équipe). Consultation seulement : pas de prix, pas de constructeur d'équipe.
 
-V1 : Accueil, Matchs (journées J1 → J34, saison d'un club), fiche match avec pronostic expliqué, classement, barème, recherche. Joueurs, fiches club, infirmerie et historique arrivent aux étapes suivantes.
+Écrans : Accueil (avec vos favoris), Matchs (journées J1 → J34, saison d'un club), fiche match avec pronostic expliqué, Joueurs (filtres, tri, 8 vues), fiche joueur, Équipes et fiche club, classement, barème, recherche. Infirmerie et historique complet arrivent ensuite.
+
+Design pensé pour l'iPhone, façon **Liquid Glass** (iOS 26) : barre d'onglets flottante en verre avec un bouton recherche séparé, barre du haut en verre dont le titre apparaît au défilement, boutons ronds, feuilles en verre. Le verre est réservé à la navigation ; le contenu reste sur des surfaces pleines. Si « Réduire la transparence » est activé, le verre devient opaque.
+
+- **Favoris** : l'étoile en haut d'une fiche joueur ou club. Les favoris s'affichent en tête de l'Accueil et sont gardés sur le téléphone.
+- **Bon supersub** : l'éclair vert à côté du nom. Au moins 2 entrées en jeu et une moyenne par entrée parmi les 10 % meilleures de L1 (6 points minimum).
 
 ## Installation
 
@@ -61,14 +66,33 @@ Le **backtest** refait le pronostic des 918 matchs de 2023-24 à 2025-26, chacun
 2. Dans le dépôt : **Settings → Pages → Source : GitHub Actions**.
 3. Le workflow `.github/workflows/deploy.yml` :
    - déploie à chaque push sur `main` ;
-   - le **lundi et le jeudi à 18 h 30 (heure de Paris)**, met d'abord les données à jour, lance les tests, commit `public/data/` si quelque chose a changé, puis déploie ;
+   - en secours du Mac, le **lundi à 19 h 30 et le vendredi à 9 h (heure de Paris)** si le Mac n'a rien poussé, met d'abord les données à jour, lance les tests, commit `public/data/` si quelque chose a changé, puis déploie ;
    - se lance aussi à la main : onglet **Actions → Données et déploiement → Run workflow**.
 
 L'app est alors servie à `https://<ton-compte>.github.io/SearchL1/`.
 
-> Sofascore peut bloquer les serveurs de GitHub. Dans ce cas, le log de l'Action l'indique et les résultats viennent d'openfootball. Pour avoir les stats joueurs à jour, lance `npm run data` sur ton Mac, puis commit et pousse `public/data/`.
+> Sofascore bloque les serveurs de GitHub (constaté le 22 octobre 2026). Dans ce cas, le log de l'Action l'indique et les résultats viennent d'openfootball. Pour avoir les stats joueurs à jour, lance `npm run data` sur ton Mac, puis commit et pousse `public/data/`.
+
+## Actualisation des données dans l'app
+
+Les données sont mises à jour **le lundi à 18 h 30 et le vendredi à 8 h** (heure de Paris). L'app recharge toute seule les nouvelles données la première fois qu'elle est ouverte (ou revient au premier plan) après un de ces créneaux. Bouton « Actualiser les données » dans l'onglet Plus.
+
+Une app installée depuis Safari ne peut pas tourner en arrière-plan sur iOS, et Sofascore refuse les requêtes venant d'un autre site que le sien : le téléphone ne peut donc pas interroger Sofascore lui-même. Les fichiers de données sont produits par `npm run data` (sur le Mac, d'où Sofascore répond) ou, pour les scores seulement, par la GitHub Action.
+
+### Mise à jour automatique depuis le Mac
+
+```bash
+zsh scripts/mac/install.sh
+```
+
+Installe une tâche macOS (launchd) qui, **le lundi à 18 h 30 et le vendredi à 8 h**, récupère les nouvelles données, commite `public/data` et pousse sur GitHub, ce qui redéploie le site. Si le Mac dort à l'heure dite, la tâche tourne à son réveil ; s'il est éteint, elle saute ce créneau. Journal : `~/Library/Logs/searchl1-donnees.log`. La GitHub Action passe une heure plus tard en secours (scores seulement) si le Mac n'a rien poussé.
+
+Désinstaller : `launchctl bootout gui/$(id -u)/com.searchl1.donnees`, puis supprimer `~/Library/LaunchAgents/com.searchl1.donnees.plist`.
 
 ## Ajouter l'app à l'écran d'accueil de l'iPhone
+
+Gratuit, sans compte développeur Apple ni App Store : c'est une web app installable (PWA).
+
 
 1. Ouvre l'adresse GitHub Pages dans **Safari**.
 2. Touche le bouton **Partager** (carré avec une flèche), puis **Sur l'écran d'accueil**.

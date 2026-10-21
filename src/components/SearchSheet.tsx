@@ -26,9 +26,9 @@ export function SearchSheet({ onClose }: { onClose: () => void }) {
     if (s.length < 2) return [];
     const words = s.split(/\s+/);
     const has = (txt: string) => words.every(w => norm(txt).includes(w));
-    const clubs: Hit[] = CLUBS.filter(c => has(`${c.name} ${c.full} ${c.abbr}`)).map(c => ({ key: 'c' + c.name, to: `/matchs?club=${encodeURIComponent(c.name)}`, title: c.name, sub: c.full, club: c.name }));
+    const clubs: Hit[] = CLUBS.filter(c => has(`${c.name} ${c.full} ${c.abbr}`)).map(c => ({ key: 'c' + c.name, to: `/club/${encodeURIComponent(c.name)}`, title: c.name, sub: c.full, club: c.name }));
     const ps: Hit[] = players.filter(p => p.apps > 0 && has(p.n)).sort((a, b) => b.pts - a.pts).slice(0, 12)
-      .map(p => ({ key: 'p' + p.id, to: `/matchs?club=${encodeURIComponent(p.club)}`, title: p.n, sub: `${POSITION[p.pos]} · ${p.club} · ${num(p.ptsAvg)} pts/match`, club: p.club }));
+      .map(p => ({ key: 'p' + p.id, to: `/joueur/${p.id}`, title: p.n, sub: `${POSITION[p.pos]} · ${p.club} · ${num(p.ptsAvg)} pts/match`, club: p.club }));
     const ms: Hit[] = words.length >= 1 ? matches.filter(m => has(`${m.h} ${m.a}`) && (words.length > 1 || clubs.length)).slice(0, 8)
       .map(m => ({ key: 'm' + m.id, to: `/match/${m.id}`, title: `${m.h} – ${m.a}`, sub: `J${m.j} · ${m.hg != null ? `${m.hg}-${m.ag}` : dayShort(m.d)}` })) : [];
     return [...clubs, ...ps, ...ms];

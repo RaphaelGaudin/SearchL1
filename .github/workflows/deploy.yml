@@ -3,11 +3,14 @@ name: Données et déploiement
 on:
   push:
     branches: [main]
-  # Lundi et jeudi à 18 h 30, heure de Paris. GitHub ne connaît que l'UTC :
-  # 16 h 30 UTC en heure d'été, 17 h 30 UTC en heure d'hiver ; l'étape « horaire » garde la bonne.
+  # Secours de la mise à jour faite par le Mac (lundi 18 h 30, vendredi 8 h) : une heure après,
+  # lundi 19 h 30 et vendredi 9 h, heure de Paris. GitHub ne connaît que l'UTC : un déclenchement
+  # pour l'heure d'été, un pour l'heure d'hiver ; l'étape « horaire » garde le bon.
   schedule:
-    - cron: '30 16 * * 1,4'
-    - cron: '30 17 * * 1,4'
+    - cron: '30 17 * * 1'
+    - cron: '30 18 * * 1'
+    - cron: '0 7 * * 5'
+    - cron: '0 8 * * 5'
   workflow_dispatch:
 
 permissions:
@@ -25,12 +28,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Horaire (18 h 30 à Paris)
+      - name: Horaire (lundi 19 h 30, vendredi 9 h à Paris) et passage du Mac
         id: when
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=Europe/Paris date +%H)" != "18" ]; then
+          expected=$([ "$(TZ=Europe/Paris date +%u)" = "1" ] && echo 19 || echo 09)
+          # Le Mac a-t-il fait une mise à jour complète dans les 3 dernières heures ?
+          recent=$(node -e "const m=require('./public/data/meta.json');console.log(m.sources.season==='Sofascore'&&Date.now()-Date.parse(m.updatedAt)<3*3600e3)")
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=Europe/Paris date +%H)" != "$expected" ]; then
             echo "update=false" >> "$GITHUB_OUTPUT"
             echo "Déclenchement hors de l'heure de Paris : on ne met pas les données à jour."
+          elif [ "${{ github.event_name }}" = "schedule" ] && [ "$recent" = "true" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            echo "Le Mac a déjà mis les données à jour : rien à faire."
           elif [ "${{ github.event_name }}" = "push" ]; then
             echo "update=false" >> "$GITHUB_OUTPUT"
           else

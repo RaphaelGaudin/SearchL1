@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useUi } from '../App.tsx';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { LargeTitle, NavBar } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { MatchRow } from '../components/MatchRow.tsx';
 import { Chip, Group, Row, type Tone } from '../components/ui.tsx';
@@ -13,7 +13,6 @@ const ROUNDS = Array.from({ length: 34 }, (_, i) => i + 1);
 
 export function Matches() {
   const d = useData();
-  const { openSearch } = useUi();
   const [params, setParams] = useSearchParams();
   const club = params.get('club');
   const j = Number(params.get('j')) || d.nextRound || d.lastRound || 1;
@@ -25,10 +24,8 @@ export function Matches() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <h1>Matchs</h1>
-        <button className="iconbtn mobile-only" onClick={openSearch} aria-label="Rechercher"><Icon name="search" size={20} /></button>
-      </div>
+      <NavBar title={club ? `Matchs · ${club}` : `Matchs · J${j}`} />
+      <LargeTitle>Matchs</LargeTitle>
       <div className="toolbar">
         <label className="select">
           <span className="sr-only">Club</span>
@@ -92,17 +89,17 @@ function Round({ j, onPick }: { j: number; onPick: (j: number) => void }) {
 
 type Item = { kind: 'l1'; d: string; m: Match } | { kind: 'cup'; d: string; c: CupMatch } | { kind: 'today'; d: string };
 
-function ClubSeason({ club }: { club: string }) {
+export function ClubSeason({ club, autoScroll = true, title = true }: { club: string; autoScroll?: boolean; title?: boolean }) {
   const d = useData();
   const todayRef = useRef<HTMLDivElement>(null);
-  const now = new Date().toISOString();
+  const [now] = useState(() => new Date().toISOString());
   const items: Item[] = [
     ...d.matches.filter(m => m.h === club || m.a === club).map(m => ({ kind: 'l1' as const, d: m.d, m })),
     ...(d.cupsByClub.get(club) ?? []).map(c => ({ kind: 'cup' as const, d: c.d, c })),
     { kind: 'today' as const, d: now },
   ].sort((a, b) => a.d.localeCompare(b.d));
 
-  useEffect(() => { todayRef.current?.scrollIntoView({ block: 'center' }); }, [club]);
+  useEffect(() => { if (autoScroll) todayRef.current?.scrollIntoView({ block: 'center' }); }, [club, autoScroll]);
 
   // Regroupe les éléments consécutifs dans des listes, le repère « Aujourd'hui » coupe la liste.
   const blocks: Item[][] = [];
@@ -113,7 +110,7 @@ function ClubSeason({ club }: { club: string }) {
   }
   return (
     <>
-      <div className="section-head"><h2>Saison de {club}</h2><span className="small muted">L1 et coupes</span></div>
+      {title && <div className="section-head"><h2>Saison de {club}</h2><Link to={`/club/${encodeURIComponent(club)}`} className="textlink small">Fiche club ›</Link></div>}
       {blocks.map((b, i) =>
         b[0].kind === 'today'
           ? <div key="today" ref={todayRef} className="today"><span>Aujourd'hui · {dayShort(now)}</span></div>

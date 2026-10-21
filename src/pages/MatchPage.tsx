@@ -1,9 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
+import { NavBar } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
-import { Avatar } from '../components/PlayerRow.tsx';
-import { Card, Chip, Empty, Estimate, Form, Group, ProbBar, Row, Section, pcts, type Tone } from '../components/ui.tsx';
+import { Avatar, PlayerName } from '../components/PlayerRow.tsx';
+import { PointsDetail } from '../components/PointsDetail.tsx';
+import { Card, Chip, Empty, Estimate, Form, Group, ProbBar, Row, Section, SubNav, pcts, type Tone } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
 import { CUP_LONG, CUP_SHORT, dayShort, num, parisDay, POSITION, signed, time } from '../lib/format.ts';
 import type { Data, PlayerStats, ScoredLog } from '../lib/model.ts';
@@ -25,7 +27,6 @@ export function MatchPage() {
   const round = (d.rounds.get(m.j) ?? []).slice().sort((a, b) => a.d.localeCompare(b.d) || a.id - b.id);
   const idx = round.findIndex(x => x.id === m.id);
   const prev = round[idx - 1], next = round[idx + 1];
-  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate(`/matchs?j=${m.j}`));
 
   const sections: [string, string][] = [
     ['prono', 'Pronostic'],
@@ -35,22 +36,21 @@ export function MatchPage() {
 
   return (
     <div className="page match-page">
-      <div className="navbar">
-        <button className="backbtn" onClick={back}><Icon name="left" />Matchs</button>
-        <div className="navbar-right">
-          <button className="iconbtn" disabled={!prev} onClick={() => prev && navigate(`/match/${prev.id}`, { replace: true })} aria-label="Match précédent de la journée"><Icon name="left" size={18} /></button>
-          <span className="num-sm muted">{idx + 1} / {round.length}</span>
-          <button className="iconbtn" disabled={!next} onClick={() => next && navigate(`/match/${next.id}`, { replace: true })} aria-label="Match suivant de la journée"><Icon name="right" size={18} /></button>
-        </div>
-      </div>
+      <NavBar title={`${m.h} – ${m.a}`} back="Matchs" fallback={`/matchs?j=${m.j}`} right={
+        <span className="glass-group">
+          <button disabled={!prev} onClick={() => prev && navigate(`/match/${prev.id}`, { replace: true })} aria-label="Match précédent de la journée"><Icon name="left" size={18} /></button>
+          <span className="num-sm" aria-label={`Match ${idx + 1} sur ${round.length}`}>{idx + 1}/{round.length}</span>
+          <button disabled={!next} onClick={() => next && navigate(`/match/${next.id}`, { replace: true })} aria-label="Match suivant de la journée"><Icon name="right" size={18} /></button>
+        </span>
+      } />
 
       <div className="hero">
-        <Link to={`/matchs?club=${encodeURIComponent(m.h)}`} className="hero-team"><Crest club={m.h} size={56} /><span className="strong">{m.h}</span></Link>
+        <Link to={`/club/${encodeURIComponent(m.h)}`} className="hero-team"><Crest club={m.h} size={56} /><span className="strong">{m.h}</span></Link>
         <div className="hero-mid">
           {played ? <span className="num-xl">{m.hg} – {m.ag}</span> : <span className="num-xl">{time(m.d)}</span>}
           <span className="small muted">{dayShort(m.d)} · J{m.j}</span>
         </div>
-        <Link to={`/matchs?club=${encodeURIComponent(m.a)}`} className="hero-team"><Crest club={m.a} size={56} /><span className="strong">{m.a}</span></Link>
+        <Link to={`/club/${encodeURIComponent(m.a)}`} className="hero-team"><Crest club={m.a} size={56} /><span className="strong">{m.a}</span></Link>
       </div>
       {played && m.goals && m.goals.length > 0 && (
         <div className="goals small">
@@ -60,9 +60,7 @@ export function MatchPage() {
         </div>
       )}
 
-      <nav className="subnav" aria-label="Sommaire">
-        {sections.map(([k, l]) => <a key={k} href={`#${k}`} onClick={e => { e.preventDefault(); document.getElementById(k)?.scrollIntoView({ behavior: 'smooth' }); }}>{l}</a>)}
-      </nav>
+      <SubNav items={sections} />
 
       <div className="cols">
         <div>
@@ -165,17 +163,12 @@ function MatchPoints({ m }: { m: Match }) {
               <details key={p.id} className="row-details">
                 <summary className="row link">
                   <Avatar name={p.n} club={club} />
-                  <span className="grow ellipsis"><span className="strong">{p.n}</span>
+                  <span className="grow ellipsis"><PlayerName p={p} />
                     <small className="muted block">{POSITION[p.pos]} · {L.sub ? 'remplaçant' : 'titulaire'} · {L.min}'{L.P.noteLE != null ? ` · note ${L.P.noteLE}` : ''}</small></span>
                   <span className={`num-md ${Math.round(L.P.total) < 0 ? 'down' : ''}`}>{num(L.P.total, 0)}</span>
                 </summary>
-                <dl className="kv detail">
-                  <div><dt>Équipe (résultat, écart{L.ga === 0 && L.min >= 60 ? ', clean sheet' : ''})</dt><dd>{num(L.P.team, 1)}</dd></div>
-                  <div><dt>Note L'Équipe estimée {L.P.noteLE ?? 'n.n.'} (Sofascore {L.r != null ? num(L.r) : '—'})</dt><dd>{num(L.P.note, 0)}</dd></div>
-                  <div><dt>Actions ({L.g} but{L.g > 1 ? 's' : ''}{L.pen ? ` dont ${L.pen} pen.` : ''}, {L.a} passe{L.a > 1 ? 's' : ''}{L.og ? `, ${L.og} csc` : ''})</dt><dd>{num(L.P.actions, 0)}</dd></div>
-                  <div><dt>Défense ({L.tk} tacle{L.tk > 1 ? 's' : ''} réussi{L.tk > 1 ? 's' : ''}{p.pos === 'G' ? `, ${L.ga} encaissé${L.ga > 1 ? 's' : ''}` : ''})</dt><dd>{num(L.P.defense, 1)}</dd></div>
-                  <div><dt>Cartons</dt><dd>{num(L.P.cards, 0)}</dd></div>
-                </dl>
+                <PointsDetail L={L} pos={p.pos} />
+                <Link to={`/joueur/${p.id}`} className="textlink detail-pad">Fiche de {p.n} ›</Link>
               </details>
             ))}
             {!rows(club).length && <Empty>Pas de stats joueurs pour ce match.</Empty>}
@@ -281,9 +274,9 @@ function ClubPlayers({ d, club, showAbs }: { d: Data; club: string; showAbs: boo
       <h3 className="dayhead"><Crest club={club} size={18} /> {club}</h3>
       <Group>
         {key.map(p => (
-          <Row key={p.id}>
+          <Row key={p.id} to={`/joueur/${p.id}`}>
             <Avatar name={p.n} club={club} />
-            <span className="grow ellipsis"><span className="strong">{p.n}</span><small className="muted block">{POSITION[p.pos]} · {p.starts} tit. · {p.g} but{p.g > 1 ? 's' : ''}, {p.a} passe{p.a > 1 ? 's' : ''}</small></span>
+            <span className="grow ellipsis"><PlayerName p={p} /><small className="muted block">{POSITION[p.pos]} · {p.starts} tit. · {p.g} but{p.g > 1 ? 's' : ''}, {p.a} passe{p.a > 1 ? 's' : ''}</small></span>
             <span className="num-md">{num(p.ptsAvg)}</span>
           </Row>
         ))}
@@ -291,7 +284,7 @@ function ClubPlayers({ d, club, showAbs }: { d: Data; club: string; showAbs: boo
           const p = a.playerId != null ? d.playerById.get(a.playerId) : undefined;
           const [tone, label] = ABS[a.type];
           return (
-            <Row key={a.player}>
+            <Row key={a.player} to={p ? `/joueur/${p.id}` : undefined}>
               <Avatar name={a.player} club={club} />
               <span className="grow ellipsis"><span className="strong">{p?.n ?? a.player}</span><small className="muted block">{a.why}{p ? ` · ${num(p.ptsAvg)} pts/match` : ''}</small></span>
               <Chip tone={tone}>{label}</Chip>

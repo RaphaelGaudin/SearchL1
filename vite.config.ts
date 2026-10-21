@@ -31,9 +31,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
-        // Données : on affiche tout de suite la dernière version en cache, puis on rafraîchit.
+        // Données : réseau d'abord (pour avoir la dernière mise à jour), cache si hors ligne ou réseau trop lent.
         runtimeCaching: [
-          { urlPattern: /\/data\/.*\.json$/, handler: 'StaleWhileRevalidate', options: { cacheName: 'donnees' } },
+          { urlPattern: /\/data\/.*\.json$/, handler: 'NetworkFirst', options: { cacheName: 'donnees', networkTimeoutSeconds: 6 } },
         ],
       },
     }),
