@@ -1,1 +1,1 @@
-{"updatedAt":"2026-10-21T22:05:02.691Z","season":"2026-27","lastRound":7,"nextRound":8,"sources":{"history":"openfootball","season":"Sofascore"},"warnings":[]}
+{"updatedAt":"2026-10-21T22:42:39.201Z","season":"2026-27","lastRound":7,"nextRound":8,"sources":{"history":"openfootball","season":"openfootball (secours)"},"warnings":["Sofascore indisponible (Sofascore: échec sur /api/v1/unique-tournament/34/season/96127/events/round/1) : résultats repris d'openfootball, stats joueurs inchangées"]}
