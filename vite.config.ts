@@ -34,6 +34,8 @@ export default defineConfig({
         // Données : réseau d'abord (pour avoir la dernière mise à jour), cache si hors ligne ou réseau trop lent.
         runtimeCaching: [
           { urlPattern: /\/data\/.*\.json$/, handler: 'NetworkFirst', options: { cacheName: 'donnees', networkTimeoutSeconds: 6 } },
+          // Photos des joueurs : trop nombreuses pour le précache, gardées au fil de la consultation.
+          { urlPattern: /\/photos\/\d+\.webp$/, handler: 'CacheFirst', options: { cacheName: 'photos', expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 60 } } },
         ],
       },
     }),

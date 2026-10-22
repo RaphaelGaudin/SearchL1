@@ -3,6 +3,7 @@
 //         npm run data -- --no-history
 // Si une vérification échoue, rien n'est écrit : les anciennes données restent en place.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLUB_NAMES, clubBySofascoreId } from '../src/lib/clubs.ts';
@@ -301,6 +302,50 @@ async function ensureLogos(force = false) {
   if (n) log(`${n} logo(s) téléchargé(s)`);
 }
 
+/**
+ * Photos des joueurs (public/photos/<id>.webp, ~3 Ko chacune), téléchargées une seule fois.
+ * Sofascore répond 404 sans photo ; une image identique pour plusieurs joueurs est une silhouette par défaut : on la retire
+ * pour que l'app affiche les initiales. Les joueurs sans photo sont notés dans .cache pour ne pas les redemander à chaque fois.
+ */
+async function ensurePhotos(ids: number[], force = false) {
+  const dir = path.resolve('public/photos');
+  const noneFile = path.resolve('.cache/photos-sans.json');
+  fs.mkdirSync(dir, { recursive: true });
+  const none = new Set<number>(force ? [] : readJson<number[]>(noneFile) ?? []);
+  const todo = [...new Set(ids)].filter(id => force || (!fs.existsSync(path.join(dir, `${id}.webp`)) && !none.has(id)));
+  let n = 0;
+  const worker = async () => {
+    for (let id = todo.shift(); id != null; id = todo.shift()) {
+      const res = await fetch(`https://img.sofascore.com/api/v1/player/${id}/image`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null);
+      const type = res?.headers.get('content-type') ?? '';
+      if (!res?.ok || !type.startsWith('image/')) { if (res?.status === 404) none.add(id); continue; }
+      const file = path.join(dir, `${id}.webp`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      // Format attendu : WebP. Un autre format est converti par sips (macOS), sinon gardé tel quel (Safari lit l'image à son contenu).
+      if (type.includes('webp')) fs.writeFileSync(file, buf);
+      else {
+        const tmp = `${file}.src`;
+        fs.writeFileSync(tmp, buf);
+        try { execFileSync('sips', ['-s', 'format', 'webp', tmp, '--out', file], { stdio: 'ignore' }); fs.rmSync(tmp); }
+        catch { fs.renameSync(tmp, file); }
+      }
+      n++;
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  // Silhouettes par défaut : même contenu pour au moins 3 joueurs.
+  const byHash = new Map<string, string[]>();
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.webp')) continue;
+    const h = createHash('md5').update(fs.readFileSync(path.join(dir, f))).digest('hex');
+    byHash.set(h, [...(byHash.get(h) ?? []), f]);
+  }
+  for (const files of byHash.values()) if (files.length >= 3) for (const f of files) { fs.rmSync(path.join(dir, f)); none.add(Number(f.slice(0, -5))); }
+  fs.mkdirSync(path.dirname(noneFile), { recursive: true });
+  fs.writeFileSync(noneFile, JSON.stringify([...none]));
+  if (n) log(`${n} photo(s) de joueur téléchargée(s), ${none.size} joueur(s) sans photo`);
+}
+
 // ---------- main ----------
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
@@ -326,6 +371,8 @@ async function main() {
     await sf.close();
     log(`Sofascore : ${sf.requests} requêtes, ${sf.cacheHits} lectures du cache`);
   }
+  const photoIds = [...season.players.map(p => p.id), ...season.absences.flatMap(a => a.playerId != null ? [a.playerId] : [])];
+  await ensurePhotos(photoIds, args.has('--photos')).catch(e => warn(`photos : ${(e as Error).message}`));
 
   // ---------- vérifications ----------
   const errors = published.length ? checkStandings(season.matches, published) : [];

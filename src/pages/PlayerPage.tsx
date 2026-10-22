@@ -45,7 +45,7 @@ export function PlayerPage() {
       <NavBar title={p.n} back="Retour" fallback="/joueurs" right={<FavButton kind="player" id={p.id} label={p.n} />} />
 
       <header className="entity-head">
-        <Avatar name={p.n} club={p.club} size={64} />
+        <Avatar name={p.n} club={p.club} id={p.id} size={72} />
         <div className="grow">
           <h1 className="h1-sm">{p.n}</h1>
           <Link to={`/club/${encodeURIComponent(p.club)}`} className="club-link"><Crest club={p.club} size={18} /> {POSITION[p.pos]} · {p.club}</Link>
@@ -148,7 +148,7 @@ export function PlayerPage() {
         <div className="rail people">
           {mates.map(x => (
             <button key={x.id} className="rail-item" onClick={() => navigate(`/joueur/${x.id}`, { replace: true })}>
-              <Avatar name={x.n} club={x.club} size={40} />
+              <Avatar name={x.n} club={x.club} id={x.id} size={40} />
               <span className="tiny ellipsis">{x.n}</span>
               <span className="tiny muted">{num(x.ptsAvg)}</span>
             </button>

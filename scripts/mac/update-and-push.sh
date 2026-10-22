@@ -32,7 +32,7 @@ fi
 # Palmarès (Wikidata, TheSportsDB) : facultatif, gardé en cache 30 jours.
 npm run --silent palmares || echo "Palmarès non mis à jour (anciens conservés)."
 
-git add public/data
+git add public/data public/photos public/logos
 if git diff --cached --quiet; then
   echo "Données inchangées."
   exit 0

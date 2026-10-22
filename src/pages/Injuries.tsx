@@ -106,7 +106,7 @@ export function Injuries() {
                 const key = p && p.starts >= Math.max(2, d.lastRound / 2);
                 return (
                   <Row key={a.club + a.player} to={p ? `/joueur/${p.id}` : undefined}>
-                    <Avatar name={p?.n ?? a.player} club={c} />
+                    <Avatar name={p?.n ?? a.player} club={c} id={p?.id ?? a.playerId} />
                     <span className="grow ellipsis">
                       {p ? <PlayerName p={p} /> : <span className="strong">{a.player}</span>}
                       <small className="muted block ellipsis">{p ? `${POSITION[p.pos]} · ` : ''}{a.why}</small>

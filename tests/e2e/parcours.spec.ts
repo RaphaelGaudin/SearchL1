@@ -264,3 +264,17 @@ test('Logos officiels des clubs, avec repli sur l\'écusson stylisé', async ({ 
   await expect(page.locator('table svg.crest[aria-label="Lens"]')).toBeVisible();
   await shot(page, '13-logos-classement');
 });
+
+test('Photos des joueurs, avec repli sur les initiales', async ({ page }) => {
+  // Toutes les photos manquent sauf celles qui se chargent : on en casse une et on vérifie les initiales à sa place.
+  await page.route('**/photos/2011326.webp', r => r.fulfill({ status: 404 }));
+  await page.goto('/#/joueurs');
+  const photos = page.locator('.avatar-photo img');
+  await expect(photos.first()).toBeVisible();
+  await expect.poll(() => photos.evaluateAll(imgs => imgs.filter(i => (i as HTMLImageElement).naturalWidth > 0).length)).toBeGreaterThan(3);
+  await page.goto('/#/joueur/2011326');
+  await expect(page.locator('.entity-head .avatar:not(.avatar-photo)')).toHaveText('NK');
+  await page.goto('/#/joueur/1409700');
+  await expect(page.locator('.entity-head .avatar-photo img')).toHaveJSProperty('complete', true);
+  await shot(page, '14-photo-joueur');
+});

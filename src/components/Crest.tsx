@@ -18,12 +18,14 @@ const failed = new Set<string>();
  */
 export function Crest({ club, size = 24 }: { club: string; size?: number }) {
   const c = clubByName.get(club);
-  const [ko, setKo] = useState(() => !c || failed.has(club));
+  // L'échec est lié au club : un même composant réutilisé pour un autre club retente son logo.
+  const [ko1, setKo1] = useState<string | null>(null);
+  const ko = !c || ko1 === club || failed.has(club);
   if (ko) return <StyledCrest club={club} size={size} />;
   return (
     <span className="crest crest-logo" style={{ width: size, height: Math.round(size * 1.15) }}>
       <img src={`${import.meta.env.BASE_URL}logos/${c!.sofascoreId}.png`} alt={club} width={size} height={size}
-        loading="lazy" decoding="async" draggable={false} onError={() => { failed.add(club); setKo(true); }} />
+        loading="lazy" decoding="async" draggable={false} onError={() => { failed.add(club); setKo1(club); }} />
     </span>
   );
 }

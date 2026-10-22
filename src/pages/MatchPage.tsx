@@ -180,7 +180,7 @@ function MatchPoints({ m }: { m: Match }) {
             {rows(club).map(({ p, L }) => (
               <details key={p.id} className="row-details">
                 <summary className="row link">
-                  <Avatar name={p.n} club={club} />
+                  <Avatar name={p.n} club={club} id={p.id} />
                   <span className="grow ellipsis"><PlayerName p={p} />
                     <small className="muted block">{POSITION[p.pos]} · {L.sub ? 'remplaçant' : 'titulaire'} · {L.min}'{L.P.noteLE != null ? ` · note ${L.P.noteLE}` : ''}</small></span>
                   <span className={`num-md ${Math.round(L.P.total) < 0 ? 'down' : ''}`}>{num(L.P.total, 0)}</span>
@@ -293,7 +293,7 @@ function ClubPlayers({ d, club, showAbs }: { d: Data; club: string; showAbs: boo
       <Group>
         {key.map(p => (
           <Row key={p.id} to={`/joueur/${p.id}`}>
-            <Avatar name={p.n} club={club} />
+            <Avatar name={p.n} club={club} id={p.id} />
             <span className="grow ellipsis"><PlayerName p={p} /><small className="muted block">{POSITION[p.pos]} · {p.starts} tit. · {p.g} but{p.g > 1 ? 's' : ''}, {p.a} passe{p.a > 1 ? 's' : ''}</small></span>
             <span className="num-md">{num(p.ptsAvg)}</span>
           </Row>
@@ -303,7 +303,7 @@ function ClubPlayers({ d, club, showAbs }: { d: Data; club: string; showAbs: boo
           const [tone, label] = ABS[a.type];
           return (
             <Row key={a.player} to={p ? `/joueur/${p.id}` : undefined}>
-              <Avatar name={a.player} club={club} />
+              <Avatar name={a.player} club={club} id={a.playerId} />
               <span className="grow ellipsis"><span className="strong">{p?.n ?? a.player}</span><small className="muted block">{a.why}{p ? ` · ${num(p.ptsAvg)} pts/match` : ''}</small></span>
               <Chip tone={tone}>{label}</Chip>
             </Row>

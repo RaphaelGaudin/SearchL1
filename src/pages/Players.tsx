@@ -196,7 +196,7 @@ export function Players() {
         {rows.slice(0, limit).map(({ p, s: w }) => (
           <Link key={p.id} to={`/joueur/${p.id}`} className="pcard">
             <div className="pcard-head">
-              <Avatar name={p.n} club={p.club} />
+              <Avatar name={p.n} club={p.club} id={p.id} />
               <span className="grow ellipsis">
                 <PlayerName p={p} />
                 <small className="muted block ellipsis">{POSITION[p.pos]} · {p.club} · {w.starts} tit.{w.subs ? ` · ${w.subs} entrée${w.subs > 1 ? 's' : ''}` : ''}</small>
