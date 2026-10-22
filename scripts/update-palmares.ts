@@ -82,6 +82,18 @@ const HONOUR_FR: Record<string, string> = {
   'Spanish La Liga': 'Liga (Espagne)', 'Italian Serie A': 'Serie A (Italie)', 'German Bundesliga': 'Bundesliga (Allemagne)', 'Portuguese Primeira Liga': 'Liga Portugal',
   'Dutch Eredivisie': 'Eredivisie (Pays-Bas)', 'Belgian Pro League': 'Pro League (Belgique)', 'Scottish Premiership': 'Premiership (Écosse)', 'FA Cup': 'FA Cup',
   'Copa del Rey': 'Coupe du Roi', 'Coppa Italia': "Coupe d'Italie", 'DFB-Pokal': "Coupe d'Allemagne", 'Olympic Games': 'Jeux olympiques', 'Copa Libertadores': 'Copa Libertadores',
+  'French Coupe de France': 'Coupe de France', 'French Trophée des Champions': 'Trophée des champions', 'French Coupe de la Ligue': 'Coupe de la Ligue',
+  'French Ligue 1 Young Player of the Year': 'Meilleur espoir de Ligue 1', 'Austrian Bundesliga': 'Bundesliga (Autriche)', 'Dutch KNVB Cup': 'Coupe des Pays-Bas',
+  'German DFB-Pokal': "Coupe d'Allemagne", 'Spanish Copa del Rey': 'Coupe du Roi', 'FIFA FIFPro World XI': 'Équipe type FIFPro', 'Johan Cruijff Schaal': 'Supercoupe des Pays-Bas',
+  'Slovak Cup': 'Coupe de Slovaquie', 'Swiss Super League': 'Super League (Suisse)', 'German DFL-Supercup': "Supercoupe d'Allemagne",
+  'English FA Community Shield': 'Community Shield', 'English FA Cup': 'FA Cup', 'Swedish Allsvenskan': 'Allsvenskan (Suède)',
+  'English PFA Championship Team of the Year': 'Équipe type de Championship', 'Scottish Premier League': 'Premiership (Écosse)',
+  'American MLS Supporters Shield': 'Supporters Shield (MLS)', 'Polish Ekstraklasa': 'Ekstraklasa (Pologne)', 'FIFA Confederations Cup': 'Coupe des confédérations',
+  'Australian A-League Champions': 'A-League (Australie)', 'English Championship': 'Championship (Angleterre)', 'English EFL Trophy': 'EFL Trophy',
+  'FIFA Ballon d Or': "Ballon d'Or", 'FIFA The Best': 'The Best FIFA', 'Greek Football Cup': 'Coupe de Grèce', 'Greek Superleague': 'Super League (Grèce)',
+  'CONMEBOL Sudamericana': 'Copa Sudamericana', 'CONMEBOL-UEFA Cup of Champions': 'Finalissima', 'Ecuadorian Serie A': 'Serie A (Équateur)',
+  'Russian Cup': 'Coupe de Russie', 'Slovak Super Liga': 'Super Liga (Slovaquie)', 'Brazilian Copa Do Brasil': 'Coupe du Brésil', 'Saudi Pro League': 'Saudi Pro League',
+  'Russian Premier League': 'Premier League (Russie)', 'Spanish Supercopa de Espana': "Supercoupe d'Espagne", 'German Bundesliga Rookie of the Season': 'Révélation de Bundesliga',
   'CONCACAF Gold Cup': 'Gold Cup', 'AFC Asian Cup': "Coupe d'Asie des nations", 'FIFA U-20 World Cup': 'Coupe du monde U20', 'UEFA European Under-21 Championship': 'Euro Espoirs',
 };
 
@@ -135,7 +147,8 @@ async function playerHonours(season: SeasonFile, prev: PalmaresFile | null): Pro
         continue;
       }
     }
-    if (c.honours.length) { out[p.id] = c.honours; found++; } else delete out[p.id];
+    // Traduction réappliquée à la lecture : un intitulé ajouté au dictionnaire profite aussi au cache.
+    if (c.honours.length) { out[p.id] = c.honours.map(h => ({ ...h, title: HONOUR_FR[h.title] ?? h.title })); found++; } else delete out[p.id];
   }
   log(`${todo.length} joueurs, ${fetched} interrogés, ${found} avec un palmarès`);
   return out;
