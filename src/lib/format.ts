@@ -32,6 +32,7 @@ export function countdown(ms: number): { n: string; u: string }[] {
 }
 
 export const POSITION: Record<string, string> = { G: 'Gardien', D: 'Défenseur', M: 'Milieu', A: 'Attaquant' };
+export const POSITIONS: Record<string, string> = { G: 'Gardiens', D: 'Défenseurs', M: 'Milieux', A: 'Attaquants' };
 export const CUP_SHORT: Record<string, string> = { LDC: 'LdC', LE: 'LE', LC: 'LC', CDF: 'CdF' };
 export const CUP_LONG: Record<string, string> = { LDC: 'Ligue des champions', LE: 'Ligue Europa', LC: 'Ligue Conférence', CDF: 'Coupe de France' };
 

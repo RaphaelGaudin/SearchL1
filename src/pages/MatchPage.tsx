@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { NavBar } from '../components/Glass.tsx';
@@ -21,6 +21,7 @@ export function MatchPage() {
   const navigate = useNavigate();
   const m = d.byId.get(Number(id));
   const played = m?.status === 'finished';
+  const touch = useRef<{ x: number; y: number } | null>(null);
   const pred = useMemo(() => (m ? (played ? d.predictBefore(m) : d.predictions.get(m.id)) : undefined), [m, played, d]);
   if (!m) return <div className="page"><Empty>Match introuvable.</Empty></div>;
 
@@ -34,8 +35,21 @@ export function MatchPage() {
     ['coupes', 'Coupes'], ['h2h', 'Face-à-face'], ['saison', 'Saison'], ['joueurs', 'Joueurs'],
   ];
 
+  // Glisser à gauche / à droite (loin du bord gauche, réservé au retour) : match suivant / précédent.
+  const swipe = (e: React.TouchEvent) => {
+    const t0 = touch.current;
+    const t = e.changedTouches[0];
+    if (!t0 || t0.x < 30) return;
+    const dx = t.clientX - t0.x, dy = t.clientY - t0.y;
+    if (Math.abs(dx) > 90 && Math.abs(dy) < 40) {
+      const target = dx < 0 ? next : prev;
+      if (target) navigate(`/match/${target.id}`, { replace: true });
+    }
+  };
   return (
-    <div className="page match-page">
+    <div className="page match-page"
+      onTouchStart={e => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
+      onTouchEnd={swipe}>
       <NavBar title={`${m.h} – ${m.a}`} back="Matchs" fallback={`/matchs?j=${m.j}`} right={
         <span className="glass-group">
           <button disabled={!prev} onClick={() => prev && navigate(`/match/${prev.id}`, { replace: true })} aria-label="Match précédent de la journée"><Icon name="left" size={18} /></button>
@@ -126,12 +140,16 @@ function Factors({ m, p }: { m: Match; p: Prediction }) {
             const delta = i ? (s.H - p.steps[i - 1].H) * 100 : 0;
             const [title, text] = why[s.key];
             return (
-              <div key={s.key} className="step">
-                <span className="grow"><span className="strong">{title}</span><small className="muted block">{text}</small></span>
-                <span className={`num-md ${i === 0 ? '' : delta > 0.5 ? 'up' : delta < -0.5 ? 'down' : 'muted'}`}>
-                  {i === 0 ? `${Math.round(s.H * 100)} %` : Math.abs(delta) < 0.5 ? '=' : signed(delta, 0)}
-                </span>
-              </div>
+              <details key={s.key} className="step-d">
+                <summary className="step">
+                  <span className="grow strong">{title}</span>
+                  <span className={`num-md ${i === 0 ? '' : delta > 0.5 ? 'up' : delta < -0.5 ? 'down' : 'muted'}`}>
+                    {i === 0 ? `${Math.round(s.H * 100)} %` : Math.abs(delta) < 0.5 ? '=' : signed(delta, 0)}
+                  </span>
+                  <Icon name="down" size={16} />
+                </summary>
+                <p className="small muted step-text">{text}</p>
+              </details>
             );
           })}
           <div className="step total">
@@ -139,7 +157,7 @@ function Factors({ m, p }: { m: Match; p: Prediction }) {
             <span className="num-md accent">{pcts(p)[0]} %</span>
           </div>
         </div>
-        <p className="small muted pad">Écarts en points de pourcentage, facteur par facteur. Correction Dixon-Coles (rho = −0,05) sur les petits scores. Backtest sur 918 matchs de 2023-24 à 2025-26 : RPS 0,208 contre 0,233 pour un pronostic fixe.</p>
+        <p className="small muted pad">Touchez un facteur pour voir le calcul. Écarts en points de pourcentage. Correction Dixon-Coles (rho = −0,05) sur les petits scores. Backtest sur 918 matchs de 2023-24 à 2025-26 : RPS 0,208 contre 0,233 pour un pronostic fixe.</p>
       </Card>
     </Section>
   );

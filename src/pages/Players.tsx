@@ -7,7 +7,7 @@ import { Chip, Empty } from '../components/ui.tsx';
 import { CLUB_NAMES } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
 import { useFavorites } from '../lib/favorites.ts';
-import { norm, num, POSITION } from '../lib/format.ts';
+import { norm, num, POSITION, POSITIONS } from '../lib/format.ts';
 import { PERIODS, windowStats, type Period, type PlayerStats, type WindowStats } from '../lib/model.ts';
 
 type Stat = { label: string; v: (s: WindowStats, p: PlayerStats) => number | null; d?: number; fmt?: (x: number) => string };
@@ -66,6 +66,15 @@ export function Players() {
   const sort = get('tri', V.main);
   const [q, setQ] = useState('');
   const [limit, setLimit] = useState(50);
+  const [sheet, setSheet] = useState<'filtres' | 'tri' | null>(null);
+  // Filtres actifs, montrés en pastilles qu'on retire d'un toucher.
+  const active: { k: string; label: string }[] = [
+    ...(!V.pos && pos !== 'all' ? [{ k: 'poste', label: POSITIONS[pos] }] : []),
+    ...(club !== 'all' ? [{ k: 'club', label: club }] : []),
+    ...(role !== 'all' ? [{ k: 'role', label: role === 'tit' ? 'Plutôt titulaires' : 'Plutôt remplaçants' }] : []),
+    ...(minSel !== 'auto' ? [{ k: 'min', label: MIN_OPTS.find(o => o[0] === minSel)![1].replace('Tous les temps de jeu', 'Tout temps de jeu') }] : []),
+    ...(only ? [{ k: 'seul', label: only === 'dispo' ? 'Disponibles' : only === 'ss' ? 'Bons supersubs' : 'Favoris' }] : []),
+  ];
 
   const rows = useMemo(() => {
     const span = period === 'saison' ? d.lastRound : Math.min(period, d.lastRound);
@@ -102,37 +111,86 @@ export function Players() {
         {PERIODS.map(x => <button key={String(x.k)} role="tab" aria-selected={period === x.k} onClick={() => set('periode', String(x.k), 'saison')}>{x.short}</button>)}
       </div>
 
-      <div className="chips-row" role="toolbar" aria-label="Filtres">
-        <label className="select small-select"><select value={view} onChange={e => { const p = new URLSearchParams(params); p.set('vue', e.target.value); p.delete('tri'); setParams(p, { replace: true }); }} aria-label="Vue">
-          {Object.entries(VIEWS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select><Icon name="down" size={16} /></label>
-        <label className="select small-select"><select value={sort} onChange={e => set('tri', e.target.value, V.main)} aria-label="Trier par">
-          {[...new Set([V.main, ...SORTS])].map(k => <option key={k} value={k}>Tri : {S[k].label}</option>)}
-        </select><Icon name="down" size={16} /></label>
-        {!V.pos && (
-          <label className="select small-select"><select value={pos} onChange={e => set('poste', e.target.value, 'all')} aria-label="Poste">
-            <option value="all">Tous postes</option>
-            {Object.entries(POSITION).map(([k, l]) => <option key={k} value={k}>{l}s</option>)}
-          </select><Icon name="down" size={16} /></label>
-        )}
-        <label className="select small-select"><select value={club} onChange={e => set('club', e.target.value, 'all')} aria-label="Club">
-          <option value="all">Tous clubs</option>
-          {clubs.map(c => <option key={c} value={c}>{c}</option>)}
-        </select><Icon name="down" size={16} /></label>
-        <label className="select small-select"><select value={role} onChange={e => set('role', e.target.value, 'all')} aria-label="Titulaire ou remplaçant">
-          <option value="all">Titulaires et remplaçants</option><option value="tit">Plutôt titulaires</option><option value="remp">Plutôt remplaçants</option>
-        </select><Icon name="down" size={16} /></label>
-        <label className="select small-select"><select value={minSel} onChange={e => set('min', e.target.value, 'auto')} aria-label="Temps de jeu minimum">
-          {MIN_OPTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select><Icon name="down" size={16} /></label>
-      </div>
-      <div className="chips-row" role="group" aria-label="Afficher seulement">
-        {[['dispo', 'Disponibles'], ['ss', 'Bons supersubs'], ['fav', 'Favoris']].map(([k, l]) => (
-          <button key={k} className={`toggle${only === k ? ' on' : ''}`} aria-pressed={only === k} onClick={() => set('seul', only === k ? null : k)}>
-            {k === 'fav' && <Star filled={only === k} size={15} />}{k === 'ss' && <SuperSubBadge small />}{l}
+      <div className="chips-row views-row" role="tablist" aria-label="Vue">
+        {Object.entries(VIEWS).map(([k, v]) => (
+          <button key={k} role="tab" aria-selected={view === k} className={`toggle${view === k ? ' on' : ''}`}
+            onClick={() => { const p = new URLSearchParams(params); if (k === 'synthese') p.delete('vue'); else p.set('vue', k); p.delete('tri'); setParams(p, { replace: true }); }}>
+            {v.label}
           </button>
         ))}
       </div>
+
+      <div className="action-row">
+        <button className="glass-pill filter-btn" onClick={() => setSheet('filtres')} aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+          Filtres{active.length > 0 && <span className="badge-count">{active.length}</span>}
+        </button>
+        <button className="glass-pill" onClick={() => setSheet('tri')} aria-haspopup="dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16m0 0-4-4m4 4 4-4M16 20V4m0 0-4 4m4-4 4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          {S[sort].label}
+        </button>
+      </div>
+      {active.length > 0 && (
+        <div className="chips-row" aria-label="Filtres actifs">
+          {active.map(f => <button key={f.k} className="toggle on removable" onClick={() => set(f.k, null)} aria-label={`Retirer le filtre ${f.label}`}>{f.label} <span aria-hidden="true">×</span></button>)}
+        </div>
+      )}
+
+      {sheet && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <div className="sheet glass" role="dialog" aria-label={sheet === 'tri' ? 'Trier les joueurs' : 'Filtrer les joueurs'} onClick={e => e.stopPropagation()}>
+            <div className="grab" />
+            {sheet === 'tri' ? (
+              <>
+                <h2 className="sheet-title">Trier par</h2>
+                <div className="group sheet-list">
+                  {[...new Set([V.main, ...SORTS])].map(k => (
+                    <button key={k} className="row link" aria-pressed={sort === k} onClick={() => { set('tri', k, V.main); setSheet(null); }}>
+                      <span className="grow">{S[k].label}</span>{sort === k && <span className="accent strong">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="sheet-title">Filtres</h2>
+                <div className="sheet-body">
+                  {!V.pos && (
+                    <Field label="Poste">
+                      <Chips value={pos} options={[['all', 'Tous'], ...Object.entries(POSITIONS) as [string, string][]]} onPick={v => set('poste', v, 'all')} />
+                    </Field>
+                  )}
+                  <Field label="Club">
+                    <label className="select"><select value={club} onChange={e => set('club', e.target.value, 'all')} aria-label="Club">
+                      <option value="all">Tous les clubs</option>
+                      {clubs.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select><Icon name="down" size={18} /></label>
+                  </Field>
+                  <Field label="Rôle">
+                    <Chips value={role} options={[['all', 'Tous'], ['tit', 'Plutôt titulaires'], ['remp', 'Plutôt remplaçants']]} onPick={v => set('role', v, 'all')} />
+                  </Field>
+                  <Field label="Temps de jeu">
+                    <Chips value={minSel} options={MIN_OPTS.map(([k, l]) => [k, l.replace('Temps de jeu : ', '').replace('Tous les temps de jeu', 'Tous')] as [string, string])} onPick={v => set('min', v, 'auto')} />
+                  </Field>
+                  <Field label="Afficher seulement">
+                    <div className="chips-wrap">
+                      {[['dispo', 'Disponibles'], ['ss', 'Bons supersubs'], ['fav', 'Favoris']].map(([k, l]) => (
+                        <button key={k} className={`toggle${only === k ? ' on' : ''}`} aria-pressed={only === k} onClick={() => set('seul', only === k ? null : k)}>
+                          {k === 'fav' && <Star filled={only === k} size={15} />}{k === 'ss' && <SuperSubBadge small />}{l}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </div>
+                <div className="sheet-actions">
+                  <button className="textbtn" onClick={() => { const p = new URLSearchParams(params); ['poste', 'club', 'role', 'min', 'seul'].forEach(k => p.delete(k)); setParams(p, { replace: true }); }}>Réinitialiser</button>
+                  <button className="primary-btn" onClick={() => setSheet(null)}>Voir {rows.length} joueurs</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="cards">
         {rows.slice(0, limit).map(({ p, s: w }) => (
@@ -162,6 +220,18 @@ export function Players() {
       </div>
       {rows.length > limit && <button className="glass-pill wide" onClick={() => setLimit(l => l + 50)}>Afficher 50 joueurs de plus</button>}
       {view === 'forme' && <p className="small muted">Une case par journée : points estimés, du rouge (négatif) au vert foncé (15 et plus). Case vide : n'a pas joué.</p>}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="field"><span className="small muted">{label}</span>{children}</div>;
+}
+
+function Chips({ value, options, onPick }: { value: string; options: [string, string][]; onPick: (v: string) => void }) {
+  return (
+    <div className="chips-wrap" role="radiogroup">
+      {options.map(([k, l]) => <button key={k} role="radio" aria-checked={value === k} className={`toggle${value === k ? ' on' : ''}`} onClick={() => onPick(k)}>{l}</button>)}
     </div>
   );
 }

@@ -12,7 +12,7 @@ test('Accueil : prochaine journée, compte à rebours, listes et clubs', async (
   await page.goto('/');
   await expect(page.getByText('Prochaine journée')).toBeVisible();
   await expect(page.locator('.countdown b').first()).toHaveText(/\d+/);
-  for (const h of ['Favoris', 'En forme', 'Supersubs', 'Gardiens et défenseurs', 'Absents qui comptent', 'Classement', 'Clubs']) {
+  for (const h of ['Favoris', 'Joueurs à suivre', 'Absents qui comptent', 'Classement', 'Clubs']) {
     await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
   }
   await expect(page.locator('.rail-item')).toHaveCount(18);
@@ -22,6 +22,10 @@ test('Accueil : prochaine journée, compte à rebours, listes et clubs', async (
 
 test('Matchs : bande de journées, flèches, probabilités qui somment à 100', async ({ page }) => {
   await page.goto('/');
+  for (const t of ['Supersubs', 'Gardiens', 'Défenseurs', 'En forme']) {
+    await page.getByRole('tab', { name: t }).click();
+    await expect(page.getByRole('tab', { name: t })).toHaveAttribute('aria-selected', 'true');
+  }
   await page.getByRole('link', { name: /Voir les \d+ matchs/ }).click();
   await expect(page).toHaveURL(/#\/matchs\?j=\d+/);
   const current = page.locator('.rd.on .num-sm');
@@ -98,6 +102,14 @@ test('Navigation : onglets, Plus, recherche, classement', async ({ page }) => {
   await page.goto('/');
   await page.locator('.tabbar').getByRole('link', { name: 'Classement' }).click();
   await expect(page.locator('table tbody tr')).toHaveCount(18);
+  // Simple : place et équipe, matchs, différence, points. Détaillé : toutes les colonnes et la forme.
+  await page.getByRole('tab', { name: 'Simple' }).click();
+  await expect(page.locator('table thead th')).toHaveText(['Équipe', 'J', 'Diff.', 'Pts']);
+  await page.getByRole('tab', { name: 'Détaillé' }).click();
+  await expect(page.locator('table thead th')).toHaveCount(10);
+  await page.reload();
+  await expect(page.locator('table thead th')).toHaveCount(10);
+  await page.getByRole('tab', { name: 'Simple' }).click();
   await noHorizontalOverflow(page);
   await shot(page, '6-classement');
 
@@ -150,15 +162,25 @@ test('Joueurs : filtres, badge supersub, vue Forme', async ({ page }) => {
   await expect(page.locator('.pcard').first()).toBeVisible();
   await noHorizontalOverflow(page);
   await shot(page, '8-joueurs');
-  await page.getByRole('button', { name: /Bons supersubs/ }).click();
+  await page.getByRole('button', { name: /^Filtres/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Filtrer les joueurs' });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: /Bons supersubs/ }).click();
+  await sheet.getByRole('button', { name: /^Voir \d+ joueurs/ }).click();
+  await expect(page.locator('.filter-btn .badge-count')).toHaveText('1');
   const n = await page.locator('.pcard').count();
   expect(n).toBeGreaterThan(0);
   await expect(page.locator('.pcard .ss-badge')).toHaveCount(n);
-  await page.getByRole('button', { name: /Bons supersubs/ }).click();
-  await page.getByLabel('Vue').selectOption('forme');
+  await page.getByRole('button', { name: 'Retirer le filtre Bons supersubs' }).click();
+  await expect(page.locator('.filter-btn .badge-count')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Forme' }).click();
   await expect(page.locator('.pcard .formgrid').first()).toBeVisible();
-  await page.getByLabel('Vue').selectOption('gardiens');
+  await page.getByRole('tab', { name: 'Gardiens' }).click();
   await expect(page.locator('.pcard').first()).toContainText('Gardien');
+  await page.getByRole('button', { name: /^Tri|pts\/match/ }).first().click();
+  const tri = page.getByRole('dialog', { name: 'Trier les joueurs' });
+  await tri.getByRole('button', { name: 'arrêts' }).click();
+  await expect(page.locator('.pcard .right-stack .tiny').first()).toHaveText('arrêts');
 });
 
 test('Fiche joueur et fiche club : sections, graphique, changer de coéquipier ou de club', async ({ page }) => {
@@ -197,7 +219,7 @@ test('Fiche joueur et fiche club : sections, graphique, changer de coéquipier o
 test('Infirmerie : compteurs, filtre club en un geste, recherche, absents groupés par club', async ({ page }) => {
   await page.goto('/');
   await page.locator('.tabbar').getByRole('button', { name: 'Plus' }).click();
-  await page.getByRole('link', { name: /Infirmerie/ }).click();
+  await page.getByRole('dialog', { name: 'Plus de rubriques' }).getByRole('link', { name: /Infirmerie/ }).click();
   await expect(page.getByRole('heading', { name: 'Infirmerie', level: 1 })).toBeVisible();
   const total = await page.locator('#root .row').count();
   expect(total).toBeGreaterThan(0);
@@ -221,4 +243,13 @@ test('Infirmerie : compteurs, filtre club en un geste, recherche, absents group�
   const name = (await page.locator('#root .row .strong').first().innerText()).trim();
   await page.getByPlaceholder('Joueur ou club').fill(name);
   await expect(page.locator('#root .row').first()).toContainText(name);
+});
+
+test('La barre d\'onglets se réduit quand on fait défiler vers le bas et revient en remontant', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.dock')).not.toHaveClass(/compact/);
+  for (const y of [200, 500, 900]) { await page.evaluate(v => window.scrollTo(0, v), y); await page.waitForTimeout(60); }
+  await expect(page.locator('.dock')).toHaveClass(/compact/);
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect(page.locator('.dock')).not.toHaveClass(/compact/);
 });

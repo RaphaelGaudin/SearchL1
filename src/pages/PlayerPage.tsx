@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { FavButton, NavBar, SuperSubBadge } from '../components/Glass.tsx';
+import { Icon } from '../components/Icon.tsx';
 import { Avatar } from '../components/PlayerRow.tsx';
 import { PointsChart } from '../components/PointsChart.tsx';
 import { PointsDetail } from '../components/PointsDetail.tsx';
@@ -59,30 +60,29 @@ export function PlayerPage() {
       <Section title="Résumé" meta={<>saison <Estimate /></>} id="resume">
         <div className="tiles">
           <div className="tile"><b className="num-lg accent">{num(season.ptsAvg)}</b><span className="small muted">pts/match</span></div>
-          <div className="tile"><b className="num-lg">{num(season.pts, 0)}</b><span className="small muted">points</span></div>
           <div className="tile"><b className="num-lg">{season.apps}</b><span className="small muted">{season.starts} tit. · {season.subs} entr.</span></div>
           <div className="tile"><b className="num-lg">{season.g}<span className="muted"> / </span>{season.a}</b><span className="small muted">buts / passes</span></div>
-          <div className="tile"><b className="num-lg">{season.min}</b><span className="small muted">minutes</span></div>
-          <div className="tile"><b className="num-lg">{num(season.noteAvg)}</b><span className="small muted">note moy. est.</span></div>
         </div>
         {trendLabel && (
-          <Card className="trend">
-            <span className="grow"><span className="strong">Forme</span>
-              <small className="muted block">3 derniers matchs {num(p.l3Avg)} pts/match, contre {num(p.ptsAvg)} sur la saison</small></span>
-            <Chip tone={trendLabel[0] as 'accent'}>{trend! >= 2 ? '↑' : trend! <= -2 ? '↓' : '='} {signed(trend!, 1)} · {trendLabel[1]}</Chip>
-          </Card>
+          <div className="trend-line">
+            <Chip tone={trendLabel[0] as 'accent'}>{trend! >= 2 ? '↑' : trend! <= -2 ? '↓' : '='} {trendLabel[1]}</Chip>
+            <span className="small muted">3 derniers matchs : {num(p.l3Avg)} pts/match ({signed(trend!, 1)} par rapport à la saison)</span>
+          </div>
         )}
-        <Card className="flush">
+        <details className="more-stats card flush">
+          <summary className="row link"><span className="grow strong">Toutes les stats</span><span className="small muted">{num(season.pts, 0)} pts · {season.min} min · note {num(season.noteAvg)}</span><Icon name="down" size={16} /></summary>
           <div className="table-scroll">
             <table className="table">
               <thead><tr><th className="l sticky">Moyennes</th><th>Saison</th><th>5 J</th><th>3 J</th></tr></thead>
               <tbody>{cmp.map(([k, f]) => <tr key={k}><td className="l sticky">{k}</td><td>{f(season)}</td><td>{f(w5)}</td><td>{f(w3)}</td></tr>)}</tbody>
             </table>
           </div>
-        </Card>
-        <Group>
-          {byPos.map(([k, v]) => <div key={k} className="row tight"><span className="grow muted">{k}</span><span className="num-sm">{v}</span></div>)}
-        </Group>
+          <div className="more-pos">
+            <div className="row tight"><span className="grow muted">Points au total</span><span className="num-sm">{num(season.pts, 0)}</span></div>
+            <div className="row tight"><span className="grow muted">Minutes jouées</span><span className="num-sm">{season.min}</span></div>
+            {byPos.map(([k, v]) => <div key={k} className="row tight"><span className="grow muted">{k}</span><span className="num-sm">{v}</span></div>)}
+          </div>
+        </details>
       </Section>
 
       <Section title={`Comparé aux ${{ G: 'gardiens', D: 'défenseurs', M: 'milieux', A: 'attaquants' }[p.pos]}`} meta="saison" id="compare">

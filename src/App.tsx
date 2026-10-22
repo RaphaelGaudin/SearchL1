@@ -31,6 +31,26 @@ const MORE: { to: string; label: string; note: string; icon: IconName; soon?: bo
 ];
 const MORE_PATHS = /^\/(equipes|club|infirmerie|historique|bareme)/;
 
+/**
+ * Barre d'onglets réduite (icônes seules) quand on fait défiler vers le bas, pleine dès qu'on remonte :
+ * le comportement des barres d'onglets iOS 26, qui laisse la place au contenu.
+ */
+function useCompactDock() {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const on = () => {
+      const y = window.scrollY, dy = y - last;
+      if (Math.abs(dy) < 6) return;
+      setCompact(dy > 0 && y > 160);
+      last = y;
+    };
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
+  return compact;
+}
+
 /** Glissement depuis le bord gauche = retour (en mode app plein écran, iOS ne le fait pas tout seul). */
 function useEdgeSwipeBack() {
   const navigate = useNavigate();
@@ -69,6 +89,7 @@ function Layout() {
   const [more, setMore] = useState(false);
   const loc = useLocation();
   useEdgeSwipeBack();
+  const compact = useCompactDock() && !more;
   // Fermer les feuilles quand on change de page.
   const [path, setPath] = useState(loc.pathname + loc.search);
   if (path !== loc.pathname + loc.search) { setPath(loc.pathname + loc.search); setMore(false); setSearch(false); }
@@ -89,7 +110,7 @@ function Layout() {
       </header>
       <main className="wrap main"><Outlet /></main>
 
-      <div className="dock">
+      <div className={`dock${compact ? ' compact' : ''}`}>
         <nav className="tabbar glass" aria-label="Navigation" style={{ '--active': active } as React.CSSProperties}>
           <span className="tab-lens" aria-hidden="true" />
           {TABS.map((t, i) => (
