@@ -587,3 +587,12 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .crest-logo img { width: 100%; height: auto; max-height: 100%; object-fit: contain; display: block; }
 /* Un léger halo garde lisibles les logos sombres (Angers, Nice…) sur le vert nuit. */
 @media (prefers-color-scheme: dark) { .crest-logo img { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .35)); } }
+
+/* ---------- profil et palmarès ---------- */
+.profile-line { display: block; margin-top: 2px; }
+.palm-row { align-items: flex-start; }
+.palm-count { width: 32px; flex: none; text-align: center; color: var(--accent); }
+.palm-more { display: inline; }
+.palm-more > summary { display: inline; cursor: pointer; color: var(--accent); list-style: none; margin-left: 4px; }
+.palm-more > summary::-webkit-details-marker { display: none; }
+.palm-more[open] > summary { display: none; }

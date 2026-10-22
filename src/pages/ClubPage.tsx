@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { FavButton, NavBar } from '../components/Glass.tsx';
+import { ClubPalmares } from '../components/Palmares.tsx';
 import { PlayerRow } from '../components/PlayerRow.tsx';
 import { Card, Chip, Empty, Form, Group, Row, Section, SubNav } from '../components/ui.tsx';
 import { CLUBS, clubByName } from '../lib/clubs.ts';
@@ -65,7 +66,7 @@ export function ClubPage() {
         </div>
       </header>
 
-      <SubNav items={[['resume', 'Résumé'], ['calendrier', 'Calendrier'], ['effectif', 'Effectif'], ['coupes', 'Coupes'], ['infirmerie', 'Infirmerie'], ['historique', 'Historique']]} />
+      <SubNav items={[['resume', 'Résumé'], ['calendrier', 'Calendrier'], ['effectif', 'Effectif'], ['coupes', 'Coupes'], ['infirmerie', 'Infirmerie'], ['palmares', 'Palmarès'], ['historique', 'Historique']]} />
 
       <Section title="Résumé" meta={`après J${d.lastRound}`} id="resume">
         <div className="tiles">
@@ -130,6 +131,10 @@ export function ClubPage() {
           })}
           {!abs.length && <Empty>Aucun absent annoncé.</Empty>}
         </Group>
+      </Section>
+
+      <Section title="Palmarès" meta={d.palmares ? 'source Wikidata' : undefined} id="palmares">
+        <ClubPalmares titles={d.palmares?.clubs[club]} />
       </Section>
 
       <Section title="Historique" meta="classement final depuis 2014" id="historique">

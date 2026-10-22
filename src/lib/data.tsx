@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { buildData, type Data } from './model.ts';
 import { slot } from './schedule.ts';
-import type { HistoryFile, MetaFile, SeasonFile } from './types.ts';
+import type { HistoryFile, MetaFile, PalmaresFile, SeasonFile } from './types.ts';
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Data };
 export interface Freshness { refreshing: boolean; checkedAt: number; refresh: () => void }
@@ -35,10 +35,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const meta = await load<MetaFile>('meta');
       if (force || meta.updatedAt !== updatedAt.current) {
-        const [season, hist] = await Promise.all([load<SeasonFile>('season'), history.current ? history.current : load<HistoryFile>('history')]);
+        const [season, hist, palm] = await Promise.all([
+          load<SeasonFile>('season'), history.current ? history.current : load<HistoryFile>('history'),
+          // Palmarès facultatif : l'app marche sans.
+          load<PalmaresFile>('palmares').catch(() => null),
+        ]);
         history.current = hist;
         updatedAt.current = meta.updatedAt;
-        setState({ status: 'ready', data: buildData(meta, season, hist) });
+        setState({ status: 'ready', data: buildData(meta, season, hist, palm) });
       }
       setCheckedAt(Date.now());
     } catch (e) {

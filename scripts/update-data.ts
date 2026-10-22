@@ -136,6 +136,11 @@ async function buildSeason(sf: Sofascore): Promise<{ file: SeasonFile; published
         let p = players.get(id);
         if (!p) players.set(id, (p = { id, n: lp.player.shortName ?? lp.player.name, club, pos, logs: [] }));
         p.club = club; // dernier club connu (transferts en cours de saison)
+        const info = lp.player;
+        p.full = info.name;
+        if (info.dateOfBirthTimestamp != null) p.dob = new Date(info.dateOfBirthTimestamp * 1000).toISOString().slice(0, 10);
+        if (info.country?.alpha2) p.nat = info.country.alpha2;
+        if (info.height) p.h = info.height;
         const min = s.minutesPlayed ?? 0;
         if (!min && lp.substitute) continue; // remplaçant non entré
         const L: PlayerLog = {

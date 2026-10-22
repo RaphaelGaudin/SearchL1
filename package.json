@@ -11,7 +11,8 @@
     "data": "tsx scripts/update-data.ts",
     "test": "vitest run",
     "e2e": "playwright test",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "palmares": "tsx scripts/update-palmares.ts"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

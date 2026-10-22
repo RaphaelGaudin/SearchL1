@@ -3,6 +3,7 @@ import { Crest } from '../components/Crest.tsx';
 import { FavButton, NavBar, SuperSubBadge } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Avatar } from '../components/PlayerRow.tsx';
+import { PlayerPalmares, PlayerProfile } from '../components/Palmares.tsx';
 import { PointsChart } from '../components/PointsChart.tsx';
 import { PointsDetail } from '../components/PointsDetail.tsx';
 import { PositionCompare } from '../components/PositionCompare.tsx';
@@ -48,6 +49,7 @@ export function PlayerPage() {
         <div className="grow">
           <h1 className="h1-sm">{p.n}</h1>
           <Link to={`/club/${encodeURIComponent(p.club)}`} className="club-link"><Crest club={p.club} size={18} /> {POSITION[p.pos]} · {p.club}</Link>
+          <PlayerProfile p={p} />
           <div className="chips-inline">
             {p.superSub && <Chip tone="accent"><SuperSubBadge small subAvg={p.subAvg} /> Bon supersub · {num(p.subAvg)} pts/entrée</Chip>}
             {p.absence && <Chip tone={ABS[p.absence.type][0]}>{ABS[p.absence.type][1]} · {p.absence.why}</Chip>}
@@ -55,7 +57,7 @@ export function PlayerPage() {
         </div>
       </header>
 
-      <SubNav items={[['resume', 'Résumé'], ['compare', 'Comparatif'], ['points', 'Points'], ['matchs', 'Match par match'], ['avenir', 'À venir'], ['equipe', 'Coéquipiers']]} />
+      <SubNav items={[['resume', 'Résumé'], ['compare', 'Comparatif'], ['points', 'Points'], ['matchs', 'Match par match'], ['avenir', 'À venir'], ['palmares', 'Palmarès'], ['equipe', 'Coéquipiers']]} />
 
       <Section title="Résumé" meta={<>saison <Estimate /></>} id="resume">
         <div className="tiles">
@@ -136,6 +138,10 @@ export function PlayerPage() {
           })}
           {!upcoming.length && <Empty>Plus de match de L1 à venir.</Empty>}
         </Group>
+      </Section>
+
+      <Section title="Palmarès" meta={d.palmares ? 'source TheSportsDB' : undefined} id="palmares">
+        <PlayerPalmares honours={d.palmares?.players[p.id]} />
       </Section>
 
       <Section title={`Coéquipiers à ${p.club}`} id="equipe">

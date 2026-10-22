@@ -62,6 +62,20 @@ export interface Player {
   club: string;
   pos: Position;
   logs: PlayerLog[];
+  /** Nom complet, date de naissance (AAAA-MM-JJ), nationalité (code pays), taille en cm. */
+  full?: string;
+  dob?: string;
+  nat?: string;
+  h?: number;
+}
+
+/** Palmarès : titres par joueur (TheSportsDB) et par club (Wikidata). */
+export interface Honour { title: string; season: string; team?: string }
+export interface ClubTitle { comp: string; seasons: string[] }
+export interface PalmaresFile {
+  updatedAt: string;
+  players: Record<string, Honour[]>;
+  clubs: Record<string, ClubTitle[]>;
 }
 
 export interface Absence {

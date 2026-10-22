@@ -75,7 +75,7 @@ export interface SfEvent {
   tournament: { uniqueTournament?: { id: number; name: string } };
 }
 export interface SfLineupPlayer {
-  player: { id: number; name: string; shortName?: string; position?: string };
+  player: { id: number; name: string; shortName?: string; position?: string; dateOfBirthTimestamp?: number; country?: { alpha2?: string }; height?: number };
   position?: string;
   substitute: boolean;
   statistics?: Record<string, number | undefined>;

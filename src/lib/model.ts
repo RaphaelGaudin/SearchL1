@@ -4,7 +4,7 @@ import { dayGap, parisDay } from './format.ts';
 import { dayNum, fit, predict, type Context, type Fit, type H2hMatch, type ModelMatch, type Prediction } from './predict.ts';
 import { matchPoints, type MatchPoints } from './scoring.ts';
 import { buildTable, type TableRow } from './standings.ts';
-import type { Absence, CupMatch, HistoryFile, Match, MetaFile, Player, PlayerLog, SeasonFile } from './types.ts';
+import type { Absence, CupMatch, HistoryFile, Match, MetaFile, PalmaresFile, Player, PlayerLog, SeasonFile } from './types.ts';
 
 export interface ScoredLog extends PlayerLog { P: MatchPoints }
 
@@ -58,9 +58,10 @@ export interface Data {
   predictBefore: (m: Match) => Prediction;
   /** Classements finaux depuis 2014-15. */
   finals: { s: string; table: TableRow[] }[];
+  palmares: PalmaresFile | null;
 }
 
-export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFile): Data {
+export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFile, palmares: PalmaresFile | null = null): Data {
   const matches = season.matches;
   const byId = new Map(matches.map(m => [m.id, m]));
   const rounds = new Map<number, Match[]>();
@@ -147,7 +148,7 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
 
   const finals = history.seasons.map(S => ({ s: S.s, table: buildTable(S.m.map(r => ({ j: r[0], d: r[1], h: r[2], a: r[3], hg: r[4], ag: r[5] }))) }));
 
-  return { meta, season, matches, byId, rounds, lastRound, nextRound, table, prevTable, players, playerById, cupsByClub, absByClub, model, predictions, meetings, cupsAround, predictBefore, finals };
+  return { meta, season, matches, byId, rounds, lastRound, nextRound, table, prevTable, players, playerById, cupsByClub, absByClub, model, predictions, meetings, cupsAround, predictBefore, finals, palmares };
 }
 
 /**
