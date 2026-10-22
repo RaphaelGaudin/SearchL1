@@ -121,4 +121,4 @@ tests/e2e/        Playwright (iPhone 13)
 public/data/      données générées (commitées)
 ```
 
-Design : maquette Figma « SearchL1 — maquette iPhone ». Fond craie, accent vert pelouse, vert nuit en mode sombre, police Archivo. Les écussons sont stylisés aux couleurs des clubs (les vrais logos sont des marques déposées).
+Design : maquette Figma « SearchL1 — maquette iPhone ». Fond craie, accent vert pelouse, vert nuit en mode sombre, police Archivo. Logos officiels des clubs téléchargés une fois depuis le serveur d'images de Sofascore dans `public/logos` (`npm run data -- --logos` pour les retélécharger) ; si un logo manque, l'app affiche un écusson stylisé aux couleurs du club. Ces logos sont des marques déposées de leurs clubs : usage personnel, non commercial.

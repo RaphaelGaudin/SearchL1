@@ -2,6 +2,7 @@
 // Usage : npm run data            (tout)
 //         npm run data -- --no-history
 // Si une vérification échoue, rien n'est écrit : les anciennes données restent en place.
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLUB_NAMES, clubBySofascoreId } from '../src/lib/clubs.ts';
@@ -268,9 +269,37 @@ function fallbackSeason(prev: SeasonFile | null, of: OfMatch[]): SeasonFile {
   };
 }
 
+// ---------- logos des clubs ----------
+/**
+ * Télécharge le logo de chaque club (serveur d'images Sofascore) dans public/logos, une seule fois :
+ * ce serveur refuse les images demandées depuis un autre site, l'app doit donc les servir elle-même.
+ */
+async function ensureLogos(force = false) {
+  const dir = path.resolve('public/logos');
+  fs.mkdirSync(dir, { recursive: true });
+  let n = 0;
+  for (const [id] of clubBySofascoreId) {
+    const file = path.join(dir, `${id}.png`);
+    if (!force && fs.existsSync(file)) continue;
+    const res = await fetch(`https://img.sofascore.com/api/v1/team/${id}/image`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const type = res.headers.get('content-type') ?? '';
+    if (!res.ok || !type.startsWith('image/')) { warn(`logo ${clubBySofascoreId.get(id)!.name} : HTTP ${res.status}`); continue; }
+    // Tout en PNG : le serveur renvoie selon les clubs du PNG ou du WebP ; sips (macOS) convertit le WebP.
+    const tmp = file + (type.includes('webp') ? '.webp' : '');
+    fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+    if (tmp !== file) {
+      try { execFileSync('sips', ['-s', 'format', 'png', tmp, '--out', file], { stdio: 'ignore' }); fs.rmSync(tmp); }
+      catch { fs.renameSync(tmp, file); }
+    }
+    n++;
+  }
+  if (n) log(`${n} logo(s) téléchargé(s)`);
+}
+
 // ---------- main ----------
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
+  await ensureLogos(args.has('--logos')).catch(e => warn(`logos : ${(e as Error).message}`));
   const sources: Record<string, string> = {};
   const history = args.has('--no-history') ? readJson<HistoryFile>(path.join(OUT, 'history.json')) : await buildHistory();
   if (!history) throw new Error('history.json absent : relance sans --no-history');

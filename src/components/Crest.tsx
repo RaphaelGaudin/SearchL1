@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { clubByName } from '../lib/clubs.ts';
 
 const SHIELD = 'M20 1.6 37.4 6.2v14.6c0 11.3-7.4 19.6-17.4 23.6C10 40.4 2.6 32.1 2.6 20.8V6.2z';
@@ -9,8 +9,27 @@ const lum = (h: string) => {
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 };
 
-/** Écusson stylisé aux couleurs du club (motif + sigle). Le sigle n'apparaît qu'à partir de 30 px. */
+// Logos qui n'ont pas pu se charger : on ne réessaie pas à chaque affichage.
+const failed = new Set<string>();
+
+/**
+ * Logo officiel du club (public/logos, téléchargé par le script de données). S'il manque ou ne se charge pas,
+ * on affiche l'écusson stylisé aux couleurs du club. Même encombrement dans les deux cas.
+ */
 export function Crest({ club, size = 24 }: { club: string; size?: number }) {
+  const c = clubByName.get(club);
+  const [ko, setKo] = useState(() => !c || failed.has(club));
+  if (ko) return <StyledCrest club={club} size={size} />;
+  return (
+    <span className="crest crest-logo" style={{ width: size, height: Math.round(size * 1.15) }}>
+      <img src={`${import.meta.env.BASE_URL}logos/${c!.sofascoreId}.png`} alt={club} width={size} height={size}
+        loading="lazy" decoding="async" draggable={false} onError={() => { failed.add(club); setKo(true); }} />
+    </span>
+  );
+}
+
+/** Écusson stylisé aux couleurs du club (motif + sigle). Le sigle n'apparaît qu'à partir de 30 px. */
+export function StyledCrest({ club, size = 24 }: { club: string; size?: number }) {
   const id = useId();
   const c = clubByName.get(club);
   const [a, b] = c?.colors ?? ['#8A94A8', '#D5DAE3'];

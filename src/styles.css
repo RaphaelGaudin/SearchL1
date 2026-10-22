@@ -581,3 +581,9 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 /* Feuilles : presque opaques, le contenu derrière ne doit pas gêner la lecture. */
 .sheet.glass { background: var(--bg); }
 .table.standings.simple .sticky { position: static; }
+
+/* ---------- logos des clubs ---------- */
+.crest-logo { display: inline-grid; place-items: center; flex: none; }
+.crest-logo img { width: 100%; height: auto; max-height: 100%; object-fit: contain; display: block; }
+/* Un léger halo garde lisibles les logos sombres (Angers, Nice…) sur le vert nuit. */
+@media (prefers-color-scheme: dark) { .crest-logo img { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .35)); } }

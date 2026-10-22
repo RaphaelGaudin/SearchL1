@@ -253,3 +253,14 @@ test('La barre d\'onglets se réduit quand on fait défiler vers le bas et revie
   await page.evaluate(() => window.scrollTo(0, 600));
   await expect(page.locator('.dock')).not.toHaveClass(/compact/);
 });
+
+test('Logos officiels des clubs, avec repli sur l\'écusson stylisé', async ({ page }) => {
+  // Logo de Lens introuvable : l'écusson stylisé doit prendre le relais.
+  await page.route('**/logos/1648.png', r => r.fulfill({ status: 404 }));
+  await page.goto('/#/classement');
+  const logos = page.locator('table .crest-logo img');
+  await expect(logos.first()).toBeVisible();
+  await expect.poll(() => logos.evaluateAll(imgs => imgs.filter(i => (i as HTMLImageElement).naturalWidth > 0).length)).toBe(17);
+  await expect(page.locator('table svg.crest[aria-label="Lens"]')).toBeVisible();
+  await shot(page, '13-logos-classement');
+});
