@@ -1,15 +1,8 @@
+import { ageOf } from '../lib/age.ts';
 import type { ClubTitle, Honour, Player } from '../lib/types.ts';
 import { Empty, Group } from './ui.tsx';
 
 const REGION = (() => { try { return new Intl.DisplayNames(['fr'], { type: 'region' }); } catch { return null; } })();
-
-/** Âge révolu à aujourd'hui. */
-export function ageOf(dob: string, now = new Date()): number {
-  const [y, m, d] = dob.split('-').map(Number);
-  let a = now.getFullYear() - y;
-  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) a--;
-  return a;
-}
 
 /** Ligne « 30 ans · Brésil · 1,83 m » sous le nom du joueur. */
 export function PlayerProfile({ p }: { p: Player }) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageOf } from '../../src/components/Palmares.tsx';
+import { ageOf } from '../../src/lib/age.ts';
 
 describe('âge du joueur', () => {
   it('compte les années révolues', () => {
