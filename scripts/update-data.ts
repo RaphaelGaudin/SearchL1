@@ -102,15 +102,17 @@ async function buildSeason(sf: Sofascore): Promise<{ file: SeasonFile; published
     if (status !== 'finished') continue;
 
     // Les stats d'un match se stabilisent dans les heures qui suivent : on ne fige le cache qu'après 36 h.
+    // Seule une copie lue au moins 6 h après le coup d'envoi (match fini, stats calculées) peut être figée.
     const cache = now - e.startTimestamp * 1000 > 36 * 3600e3 ? 'forever' : 'fallback';
-    const inc = (await sf.get<{ incidents: SfIncident[] }>(`/api/v1/event/${e.id}/incidents`, { cache }))?.incidents ?? [];
+    const after = e.startTimestamp * 1000 + 6 * 3600e3;
+    const inc = (await sf.get<{ incidents: SfIncident[] }>(`/api/v1/event/${e.id}/incidents`, { cache, after }))?.incidents ?? [];
     const goals: GoalEvent[] = inc.filter(i => i.incidentType === 'goal').reverse().map(i => ({
       min: (i.time ?? 0) + (i.addedTime ?? 0), home: !!i.isHome,
       scorer: i.player?.shortName ?? i.player?.name ?? '?', assist: i.assist1?.shortName ?? i.assist1?.name,
       kind: i.incidentClass === 'penalty' ? 'penalty' : i.incidentClass === 'ownGoal' ? 'own' : 'regular',
     }));
     m.goals = goals;
-    const lineups = e.hasEventPlayerStatistics === false ? null : await sf.get<SfLineups>(`/api/v1/event/${e.id}/lineups`, { cache });
+    const lineups = e.hasEventPlayerStatistics === false ? null : await sf.get<SfLineups>(`/api/v1/event/${e.id}/lineups`, { cache, after });
     if (!lineups || !lineups.home?.players?.length) {
       m.incomplete = true;
       incompleteIncidents.push({ m, inc });
