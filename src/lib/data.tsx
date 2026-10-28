@@ -56,7 +56,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => { fetchAll(true); }, [fetchAll]);
 
   useEffect(() => {
-    const due = () => document.visibilityState === 'visible' && checkedAt > 0 && slot() > checkedAt;
+    // Nouveau créneau depuis la dernière vérification, ou données encore antérieures au dernier créneau
+    // (mise à jour pas encore publiée) : dans ce cas on revérifie toutes les 5 minutes jusqu'à les recevoir.
+    const due = () => {
+      if (document.visibilityState !== 'visible' || checkedAt === 0) return false;
+      const last = slot();
+      const late = updatedAt.current != null && Date.parse(updatedAt.current) < last;
+      return last > checkedAt || (late && Date.now() - checkedAt >= 5 * 60e3);
+    };
     const check = () => { if (due()) fetchAll(false); };
     document.addEventListener('visibilitychange', check);
     window.addEventListener('focus', check);

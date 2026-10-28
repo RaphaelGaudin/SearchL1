@@ -36,6 +36,9 @@ cat > "$PLIST" <<EOF
     <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
     <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
   </array>
+  <!-- Toutes les 30 minutes et à l'ouverture de session : rattrape un créneau manqué (Mac en veille, sans réseau). -->
+  <key>StartInterval</key><integer>1800</integer>
+  <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$HOME/Library/Logs/searchl1-donnees.log</string>
   <key>StandardErrorPath</key><string>$HOME/Library/Logs/searchl1-donnees.log</string>
 </dict>
@@ -44,5 +47,5 @@ EOF
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "Tâche installée : lundi 18 h 30 et vendredi 8 h. Journal : ~/Library/Logs/searchl1-donnees.log"
+echo "Tâche installée : lundi 18 h 30 et vendredi 8 h, avec rattrapage toutes les 30 minutes si un créneau est manqué. Journal : ~/Library/Logs/searchl1-donnees.log"
 echo "Lancer tout de suite pour tester : launchctl kickstart gui/$(id -u)/$LABEL"

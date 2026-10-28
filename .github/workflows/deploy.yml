@@ -3,14 +3,14 @@ name: Données et déploiement
 on:
   push:
     branches: [main]
-  # Secours de la mise à jour faite par le Mac (lundi 18 h 30, vendredi 8 h) : une heure après,
-  # lundi 19 h 30 et vendredi 9 h, heure de Paris. GitHub ne connaît que l'UTC : un déclenchement
-  # pour l'heure d'été, un pour l'heure d'hiver ; l'étape « horaire » garde le bon.
+  # Secours de la mise à jour faite par le Mac (lundi 18 h 30, vendredi 8 h, heure de Paris).
+  # GitHub lance les tâches planifiées avec parfois plusieurs heures de retard : on ne se fie pas à l'heure,
+  # on réessaie toutes les heures après chaque créneau et le job « retard » décide d'après l'âge des données.
   schedule:
-    - cron: '30 17 * * 1'
-    - cron: '30 18 * * 1'
-    - cron: '0 7 * * 5'
-    - cron: '0 8 * * 5'
+    - cron: '45 17-23 * * 1'
+    - cron: '45 5-12 * * 2'
+    - cron: '15 7-15 * * 5'
+    - cron: '15 6-10 * * 6'
   workflow_dispatch:
 
 permissions:
@@ -23,28 +23,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Tâches planifiées : y a-t-il une mise à jour à faire ? Sinon, rien n'est lancé (ni build ni déploiement).
+  retard:
+    runs-on: ubuntu-latest
+    outputs:
+      update: ${{ steps.when.outputs.update }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: when
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          # Données plus anciennes que le dernier créneau, et le Mac a eu au moins une heure pour passer.
+          elif npx -y tsx scripts/stale.mts --grace=60; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: retard
+    if: github.event_name != 'schedule' || needs.retard.outputs.update == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Horaire (lundi 19 h 30, vendredi 9 h à Paris) et passage du Mac
+      - name: Mise à jour demandée ?
         id: when
-        run: |
-          expected=$([ "$(TZ=Europe/Paris date +%u)" = "1" ] && echo 19 || echo 09)
-          # Le Mac a-t-il fait une mise à jour complète dans les 3 dernières heures ?
-          recent=$(node -e "const m=require('./public/data/meta.json');console.log(m.sources.season==='Sofascore'&&Date.now()-Date.parse(m.updatedAt)<3*3600e3)")
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=Europe/Paris date +%H)" != "$expected" ]; then
-            echo "update=false" >> "$GITHUB_OUTPUT"
-            echo "Déclenchement hors de l'heure de Paris : on ne met pas les données à jour."
-          elif [ "${{ github.event_name }}" = "schedule" ] && [ "$recent" = "true" ]; then
-            echo "update=false" >> "$GITHUB_OUTPUT"
-            echo "Le Mac a déjà mis les données à jour : rien à faire."
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            echo "update=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "update=true" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "update=${{ needs.retard.outputs.update }}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
