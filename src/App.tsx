@@ -13,6 +13,7 @@ import { MatchPage } from './pages/MatchPage.tsx';
 import { Matches } from './pages/Matches.tsx';
 import { PlayerPage } from './pages/PlayerPage.tsx';
 import { Players } from './pages/Players.tsx';
+import { History } from './pages/History.tsx';
 import { Soon } from './pages/Soon.tsx';
 import { Standings } from './pages/Standings.tsx';
 import { Teams } from './pages/Teams.tsx';
@@ -26,7 +27,7 @@ const TABS: { to: string; label: string; icon: IconName; match: RegExp }[] = [
 const MORE: { to: string; label: string; note: string; icon: IconName; soon?: boolean }[] = [
   { to: '/equipes', label: 'Équipes', note: '18 fiches club', icon: 'shield' },
   { to: '/infirmerie', label: 'Infirmerie', note: 'blessés, suspendus, incertains', icon: 'cross' },
-  { to: '/historique', label: 'Historique', note: 'bientôt', icon: 'history', soon: true },
+  { to: '/historique', label: 'Historique', note: 'classements depuis 2014-15', icon: 'history' },
   { to: '/bareme', label: 'Calcul des points', note: 'barème du jeu', icon: 'info' },
 ];
 const MORE_PATHS = /^\/(equipes|club|infirmerie|historique|bareme)/;
@@ -160,7 +161,7 @@ const router = createHashRouter([
       { path: '/club/:name', element: <ClubPage /> },
       { path: '/bareme', element: <Bareme /> },
       { path: '/infirmerie', element: <Injuries /> },
-      { path: '/historique', element: <Soon title="Historique" what="Les classements finaux depuis 2014-15 et la courbe de chaque club" /> },
+      { path: '/historique', element: <History /> },
       { path: '*', element: <Soon title="Page introuvable" what="Cette page n'existe pas" /> },
     ],
   },

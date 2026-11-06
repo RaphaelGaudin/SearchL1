@@ -68,8 +68,12 @@ test('Fiche match à venir : pronostic expliqué, sommaire, retour à la même p
   // Le sommaire reste collé en haut.
   expect(await page.locator('.subnav').evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(60);
 
+  // Position dans la journée (« 3/9 ») : le match suivant avance d'un cran, quelles que soient les données.
+  const pos = page.locator('.glass-group .num-sm');
+  const [k, n] = (await pos.innerText()).split('/').map(Number);
+  test.skip(k >= n, 'dernier match de la journée');
   await page.getByRole('button', { name: 'Match suivant de la journée' }).click();
-  await expect(page.locator('.glass-group .num-sm')).toHaveText(/7\/\d+/);
+  await expect(pos).toHaveText(`${k + 1}/${n}`);
 
   await page.getByRole('button', { name: /^Retour/ }).click();
   await expect(page).toHaveURL(/#\/matchs/);
@@ -277,4 +281,25 @@ test('Photos des joueurs, avec repli sur les initiales', async ({ page }) => {
   await page.goto('/#/joueur/1409700');
   await expect(page.locator('.entity-head .avatar-photo img')).toHaveJSProperty('complete', true);
   await shot(page, '14-photo-joueur');
+});
+
+test('Historique : courbe des clubs choisis et classement final de chaque saison', async ({ page }) => {
+  await page.goto('/#/historique');
+  await expect(page.getByRole('heading', { name: 'Historique' })).toBeVisible();
+  // Quatre clubs par défaut, une courbe chacun ; un cinquième remplace le plus ancien.
+  await expect(page.locator('.club-rail [aria-pressed="true"]')).toHaveCount(4);
+  await page.locator('.club-rail button', { hasText: 'Lens' }).click();
+  await expect(page.locator('.club-rail [aria-pressed="true"]')).toHaveCount(4);
+  await expect(page.locator('.bump-legend')).toContainText('Lens');
+  await page.locator('.bump-dot').first().click();
+  await expect(page.locator('.bump-tip strong')).toBeVisible();
+  // Saison arrêtée : classement aux points par match, PSG champion.
+  await page.getByRole('tab', { name: '2019-20' }).click();
+  await expect(page.locator('.hist-summary')).toContainText('PSG');
+  await expect(page.getByText('Saison arrêtée')).toBeVisible();
+  await page.getByRole('tab', { name: '2025-26' }).click();
+  await expect(page.locator('table.standings tbody tr')).toHaveCount(18);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+  await shot(page, '15-historique');
 });

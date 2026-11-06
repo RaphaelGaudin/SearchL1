@@ -598,3 +598,14 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .palm-more > summary { display: inline; cursor: pointer; color: var(--accent); list-style: none; margin-left: 4px; }
 .palm-more > summary::-webkit-details-marker { display: none; }
 .palm-more[open] > summary { display: none; }
+
+/* Historique */
+.hist-note { margin: 8px 2px 0; }
+.hist-summary { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 2px 8px; }
+.bump-dot { cursor: pointer; }
+.bump-label { font-size: 10px; font-weight: 600; fill: var(--ink); font-stretch: 75%; }
+.bump-legend { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 4px; }
+.bump-legend button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--ink); }
+.bump-legend button[aria-pressed="true"] { font-weight: 700; }
+.bump-legend i { width: 14px; height: 3px; border-radius: 2px; }
+.bump-tip { min-height: 20px; margin: 6px 0 0; }
