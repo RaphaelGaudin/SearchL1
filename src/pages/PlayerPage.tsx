@@ -51,7 +51,7 @@ export function PlayerPage() {
           <Link to={`/club/${encodeURIComponent(p.club)}`} className="club-link"><Crest club={p.club} size={18} /> {POSITION[p.pos]} · {p.club}</Link>
           <PlayerProfile p={p} />
           <div className="chips-inline">
-            {p.superSub && <Chip tone="accent"><SuperSubBadge small subAvg={p.subAvg} /> Bon supersub · {num(p.subAvg)} pts/entrée</Chip>}
+            {p.superSub && <Chip tone="accent"><SuperSubBadge small subAvg={p.subAvg} /> Bon supersub · {num(p.subAvg)} pts/entrée · {p.recentSubs} entrées sur 5 j.</Chip>}
             {p.absence && <Chip tone={ABS[p.absence.type][0]}>{ABS[p.absence.type][1]} · {p.absence.why}</Chip>}
           </div>
         </div>

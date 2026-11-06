@@ -51,7 +51,7 @@ export function Bareme() {
           <Row><span className="grow">Remplaçant</span><span className="num-sm">× ½</span></Row>
           <Row><span className="grow">SuperSub, s'il entre en jeu</span><span className="num-sm">× {B.superSub}</span></Row>
         </Group>
-        <Card><p className="small"><SuperSubBadge small /> L'éclair signale un bon supersub : au moins 2 entrées en jeu et une moyenne par entrée parmi les 10 % meilleures de L1 (6 points minimum).</p></Card>
+        <Card><p className="small"><SuperSubBadge small /> L'éclair signale un bon supersub : un joueur actuellement remplaçant (sur les 5 dernières journées, au moins 2 entrées en jeu, deux fois plus d'entrées que de titularisations, et entré en jeu lors de son dernier match) et décisif quand il entre (5 points par entrée au moins sur la saison, contre 1 à 2 pour une entrée type).</p></Card>
       </Section>
     </div>
   );

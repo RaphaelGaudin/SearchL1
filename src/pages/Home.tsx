@@ -41,7 +41,7 @@ export function Home() {
     list.filter(p => key(p) != null).sort((a, b) => key(b)! - key(a)!).slice(0, n);
   const lists: Record<Watch, { p: PlayerStats; v: number | null; sub?: string; trend?: boolean }[]> = {
     forme: top(d.players.filter(p => p.l3Apps >= 2 && p.trend != null && !p.absence), p => p.l3Avg).map(p => ({ p, v: p.l3Avg, trend: true })),
-    supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.subApps} entrées` })),
+    supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.recentSubs} entrée${p.recentSubs > 1 ? 's' : ''}, ${p.recentStarts} tit. sur 5 j.` })),
     gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
     defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
   };

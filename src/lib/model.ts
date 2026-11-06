@@ -8,8 +8,21 @@ import type { Absence, CupMatch, HistoryFile, Match, MetaFile, PalmaresFile, Pla
 
 export interface ScoredLog extends PlayerLog { P: MatchPoints }
 
-/** Points par entrée en jeu en dessous desquels on ne parle jamais de bon supersub. */
-export const SUPERSUB_MIN = 6;
+/** Points par entrée en jeu (saison) en dessous desquels on ne parle pas de bon supersub ; une entrée type rapporte 1 à 2 points. */
+export const SUPERSUB_MIN = 5;
+/** Journées regardées pour savoir si le joueur est actuellement remplaçant. */
+export const SUPERSUB_WINDOW = 5;
+
+/**
+ * Bon supersub : actuellement remplaçant et décisif quand il entre.
+ * `recent` : ses matchs joués sur les SUPERSUB_WINDOW dernières journées, du plus ancien au plus récent.
+ * Il faut au moins 2 entrées en jeu, deux fois plus d'entrées que de titularisations, être entré en jeu lors de
+ * son dernier match, et sur la saison au moins 2 entrées à SUPERSUB_MIN points en moyenne.
+ */
+export function isSuperSub(recent: { sub: boolean }[], subAvg: number | null, subApps: number): boolean {
+  const subs = recent.filter(L => L.sub).length, starts = recent.length - subs;
+  return subs >= 2 && subs >= 2 * starts && !!recent.at(-1)?.sub && subApps >= 2 && (subAvg ?? 0) >= SUPERSUB_MIN;
+}
 
 export interface PlayerStats extends Omit<Player, 'logs'> {
   logs: ScoredLog[];
@@ -28,7 +41,10 @@ export interface PlayerStats extends Omit<Player, 'logs'> {
   trend: number | null;
   subAvg: number | null;
   subApps: number;
-  /** Bon supersub : au moins 2 entrées en jeu et une moyenne par entrée parmi les 10 % meilleures (6 pts minimum). */
+  /** Entrées en jeu et titularisations sur les SUPERSUB_WINDOW dernières journées. */
+  recentSubs: number;
+  recentStarts: number;
+  /** Bon supersub (voir isSuperSub). */
   superSub: boolean;
   absence: Absence | null;
 }
@@ -80,6 +96,9 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
     const full = logs.filter(L => L.lu && L.min > 0);
     const l3 = full.filter(L => L.j > lastRound - 3);
     const sub = full.filter(L => L.sub);
+    // Rôle actuel : matchs joués sur les dernières journées, du plus ancien au plus récent.
+    const recent = logs.filter(L => L.min > 0 && L.j > lastRound - SUPERSUB_WINDOW).sort((a, b) => a.j - b.j);
+    const rSubs = recent.filter(L => L.sub).length, rStarts = recent.length - rSubs;
     const avg = (ls: ScoredLog[]) => (ls.length ? ls.reduce((s, L) => s + L.P.total, 0) / ls.length : null);
     const ptsAvg = avg(full), l3Avg = avg(l3);
     return {
@@ -94,13 +113,12 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
       ptsAvg, l3Avg, l3Apps: l3.length,
       // Tendance seulement si la saison compte d'autres matchs que les 3 derniers (sinon on compare un chiffre à lui-même).
       trend: ptsAvg != null && l3Avg != null && l3.length >= 2 && full.length > l3.length ? l3Avg - ptsAvg : null,
-      subAvg: avg(sub), subApps: sub.length, superSub: false,
+      subAvg: avg(sub), subApps: sub.length,
+      recentSubs: rSubs, recentStarts: rStarts,
+      superSub: isSuperSub(recent, avg(sub), sub.length),
       absence: absences.find(a => a.playerId === p.id) ?? null,
     };
   });
-  const subAvgs = players.filter(p => p.subApps >= 2).map(p => p.subAvg!).sort((a, b) => b - a);
-  const ssMin = Math.max(SUPERSUB_MIN, subAvgs[Math.floor(subAvgs.length * 0.1)] ?? Infinity);
-  players.forEach(p => (p.superSub = p.subApps >= 2 && p.subAvg! >= ssMin));
   const playerById = new Map(players.map(p => [p.id, p]));
 
   const absByClub = new Map<string, Absence[]>();
