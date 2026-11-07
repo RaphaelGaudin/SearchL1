@@ -28,8 +28,9 @@ export class Sofascore {
    * GET sur l'API. `cache: 'forever'` pour ce qui ne bouge plus (feuilles de matchs terminés),
    * sinon le cache sert seulement de secours si l'appel échoue. `after` (ms) : une copie en cache écrite avant
    * cet instant n'est pas définitive (par exemple les compositions lues avant le match, sans statistiques).
+   * `fresh` : jamais de copie en cache en secours (une vieille copie ferait reculer les résultats).
    */
-  async get<T>(apiPath: string, opts: { cache?: 'forever' | 'fallback'; after?: number } = {}): Promise<T | null> {
+  async get<T>(apiPath: string, opts: { cache?: 'forever' | 'fallback'; after?: number; fresh?: boolean } = {}): Promise<T | null> {
     const file = path.join(CACHE_DIR, apiPath.replace(/^\/api\/v1\//, '').replace(/[^a-z0-9]+/gi, '_') + '.json');
     if (opts.cache === 'forever' && fs.existsSync(file) && fs.statSync(file).mtimeMs >= (opts.after ?? 0)) {
       this.cacheHits++;
@@ -52,7 +53,7 @@ export class Sofascore {
         return JSON.parse(res.body);
       }
     }
-    if (fs.existsSync(file)) {
+    if (!opts.fresh && fs.existsSync(file)) {
       this.cacheHits++;
       return JSON.parse(fs.readFileSync(file, 'utf8'));
     }

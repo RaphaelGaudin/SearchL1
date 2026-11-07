@@ -1,12 +1,14 @@
 // Met à jour public/data/*.json : historique (openfootball), saison en cours, joueurs, absents et coupes (Sofascore).
 // Usage : npm run data            (tout)
 //         npm run data -- --no-history
+//         npm run data -- --scores   (après des matchs : seulement les journées des matchs qui viennent de finir)
 // Si une vérification échoue, rien n'est écrit : les anciennes données restent en place.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { CLUB_NAMES, clubBySofascoreId } from '../src/lib/clubs.ts';
+import { awaitingScores } from '../src/lib/schedule.ts';
 import type { Absence, CupCode, CupMatch, GoalEvent, HistoryFile, Match, MetaFile, Player, PlayerLog, Position, SeasonFile } from '../src/lib/types.ts';
 import { fetchSeason, type OfMatch } from './lib/openfootball.ts';
 import { Sofascore, type SfEvent, type SfIncident, type SfLineups, type SfMissing } from './lib/sofascore.ts';
@@ -76,11 +78,16 @@ function absenceOf(m: SfMissing, club: string): Absence {
 
 const clubOf = (t: { id: number; shortName: string }) => clubBySofascoreId.get(t.id)?.name ?? t.shortName;
 
-async function buildSeason(sf: Sofascore): Promise<{ file: SeasonFile; published: PublishedRow[] }> {
+/**
+ * Saison complète. Avec `scores` (récupération après des matchs), les absents et les coupes sont repris
+ * des données précédentes : seuls le calendrier, le classement et les feuilles des matchs finis sont lus.
+ */
+async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promise<{ file: SeasonFile; published: PublishedRow[] }> {
   const now = Date.now();
   const events: SfEvent[] = [];
   for (let j = 1; j <= ROUNDS; j++) {
-    const r = await sf.get<{ events: SfEvent[] }>(`/api/v1/unique-tournament/${TOURNAMENT}/season/${SEASON_ID}/events/round/${j}`, { cache: 'fallback' });
+    // Après des matchs, pas de secours en cache : une copie ancienne ferait reculer les résultats déjà publiés.
+    const r = await sf.get<{ events: SfEvent[] }>(`/api/v1/unique-tournament/${TOURNAMENT}/season/${SEASON_ID}/events/round/${j}`, { cache: 'fallback', fresh: !!scores });
     for (const e of r?.events ?? []) events.push({ ...e, roundInfo: { round: j } });
   }
   log(`${events.length} matchs au calendrier`);
@@ -113,10 +120,12 @@ async function buildSeason(sf: Sofascore): Promise<{ file: SeasonFile; published
     }));
     m.goals = goals;
     const lineups = e.hasEventPlayerStatistics === false ? null : await sf.get<SfLineups>(`/api/v1/event/${e.id}/lineups`, { cache, after });
-    if (!lineups || !lineups.home?.players?.length) {
+    // Juste après le coup de sifflet, les compositions peuvent être là sans les stats : on attend la mise à jour suivante.
+    const stats = !!lineups?.home?.players?.some(p => p.statistics?.minutesPlayed);
+    if (!lineups || !lineups.home?.players?.length || !stats) {
       m.incomplete = true;
       incompleteIncidents.push({ m, inc });
-      warn(`feuille de match manquante : ${h}-${a} (J${m.j})`);
+      warn(`${lineups?.home?.players?.length ? 'stats joueurs pas encore publiées' : 'feuille de match manquante'} : ${h}-${a} (J${m.j})`);
       continue;
     }
 
@@ -190,8 +199,8 @@ async function buildSeason(sf: Sofascore): Promise<{ file: SeasonFile; published
   const nextRound = matches.filter(m => m.status === 'notstarted').reduce((n, m) => Math.min(n, m.j), Infinity);
 
   // Absents de la prochaine journée : liste « missingPlayers » publiée avant le match.
-  const absences: Absence[] = [];
-  if (isFinite(nextRound)) {
+  const absences: Absence[] = scores ? scores.prev.absences : [];
+  if (!scores && isFinite(nextRound)) {
     for (const m of matches.filter(x => x.j === nextRound && x.status === 'notstarted')) {
       const L = await sf.get<SfLineups>(`/api/v1/event/${m.id}/lineups`, { cache: 'fallback' }).catch(() => null);
       if (!L) continue;
@@ -200,10 +209,10 @@ async function buildSeason(sf: Sofascore): Promise<{ file: SeasonFile; published
     }
   }
 
-  const cups = await buildCups(sf);
+  const cups = scores ? scores.prev.cups : await buildCups(sf);
 
   const st = await sf.get<{ standings: { rows: { team: { id: number; shortName: string }; matches: number; points: number; scoresFor: number; scoresAgainst: number }[] }[] }>(
-    `/api/v1/unique-tournament/${TOURNAMENT}/season/${SEASON_ID}/standings/total`, { cache: 'fallback' });
+    `/api/v1/unique-tournament/${TOURNAMENT}/season/${SEASON_ID}/standings/total`, { cache: 'fallback', fresh: !!scores });
   const published: PublishedRow[] = (st?.standings[0]?.rows ?? []).map(r => ({ club: clubOf(r.team), mp: r.matches, pts: r.points, gf: r.scoresFor, ga: r.scoresAgainst }));
 
   log(`${finished.length} matchs joués, ${players.size} joueurs, ${absences.length} absents, ${cups.length} matchs de coupe`);
@@ -351,21 +360,35 @@ async function ensurePhotos(ids: number[], force = false) {
 // ---------- main ----------
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
-  await ensureLogos(args.has('--logos')).catch(e => warn(`logos : ${(e as Error).message}`));
+  // --scores : récupération après des matchs, seulement leurs journées (scores, buteurs, stats si publiées).
+  const scoresOnly = args.has('--scores');
+  const prev = readJson<SeasonFile>(path.join(OUT, 'season.json'));
+  const prevMeta = readJson<MetaFile>(path.join(OUT, 'meta.json'));
+  let scores: { prev: SeasonFile } | undefined;
+  if (scoresOnly) {
+    if (!prev || !prevMeta) throw new Error('season.json absent : lance d\'abord une mise à jour complète');
+    const waiting = awaitingScores(prev.matches);
+    if (!waiting.length) { log('aucun match terminé en attente de score : rien à faire'); return; }
+    log(`scores à récupérer : ${waiting.map(m => `${m.h}-${m.a}`).join(', ')}`);
+    scores = { prev };
+  }
+
+  if (!scoresOnly) await ensureLogos(args.has('--logos')).catch(e => warn(`logos : ${(e as Error).message}`));
   const sources: Record<string, string> = {};
-  const history = args.has('--no-history') ? readJson<HistoryFile>(path.join(OUT, 'history.json')) : await buildHistory();
+  const history = args.has('--no-history') || scoresOnly ? readJson<HistoryFile>(path.join(OUT, 'history.json')) : await buildHistory();
   if (!history) throw new Error('history.json absent : relance sans --no-history');
   sources.history = 'openfootball';
 
-  const prev = readJson<SeasonFile>(path.join(OUT, 'season.json'));
   let season: SeasonFile;
   let published: PublishedRow[] = [];
   const sf = new Sofascore();
   try {
     await sf.open();
-    ({ file: season, published } = await buildSeason(sf));
+    ({ file: season, published } = await buildSeason(sf, scores));
     sources.season = 'Sofascore';
   } catch (e) {
+    // Sans Sofascore, une récupération de scores n'a pas de secours (openfootball arrive des heures plus tard).
+    if (scoresOnly) throw e;
     warn(`Sofascore indisponible (${(e as Error).message}) : résultats repris d'openfootball, stats joueurs inchangées`);
     season = fallbackSeason(prev, await fetchSeason(SEASON));
     sources.season = 'openfootball (secours)';
@@ -390,8 +413,11 @@ async function main() {
 
   const finished = season.matches.filter(m => m.status === 'finished');
   const next = season.matches.filter(m => m.status === 'notstarted');
+  // Après des matchs, rien n'est écrit tant que Sofascore n'a rien de nouveau (score pas encore validé).
+  if (scoresOnly && JSON.stringify(season) === JSON.stringify(prev)) { log('pas encore de nouveau score : rien à écrire'); return; }
+  const updatedAt = new Date().toISOString();
   const meta: MetaFile = {
-    updatedAt: new Date().toISOString(), season: SEASON,
+    updatedAt, fullAt: scoresOnly ? prevMeta!.fullAt ?? prevMeta!.updatedAt : updatedAt, kind: scoresOnly ? 'scores' : 'full', season: SEASON,
     lastRound: finished.reduce((n, m) => Math.max(n, m.j), 0),
     nextRound: next.length ? Math.min(...next.map(m => m.j)) : null,
     sources, warnings,

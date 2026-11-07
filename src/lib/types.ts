@@ -119,7 +119,12 @@ export interface HistoryFile {
 }
 
 export interface MetaFile {
+  /** Dernière mise à jour, complète ou des seuls scores. */
   updatedAt: string;
+  /** Dernière mise à jour complète (absente : updatedAt). */
+  fullAt?: string;
+  /** « scores » : seuls les matchs qui venaient de finir ont été récupérés. */
+  kind?: 'full' | 'scores';
   season: string;
   lastRound: number;
   nextRound: number | null;

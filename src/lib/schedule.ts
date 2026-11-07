@@ -31,3 +31,39 @@ export function slot(now = Date.now(), next = false): number {
   found.sort((a, b) => a - b);
   return next ? found.find(t => t > now)! : found.filter(t => t <= now).at(-1)!;
 }
+
+// ---------- récupération des scores après les matchs ----------
+// Un match est fini environ 2 h après le coup d'envoi (mi-temps et arrêts de jeu compris, plus le temps
+// que Sofascore valide le score). Des matchs qui finissent à moins de 30 minutes d'écart sont récupérés
+// en une seule fois, après le dernier. Au bout de 24 h sans score, on arrête d'attendre (report non signalé…).
+export const MATCH_END = 2 * 3600e3;
+const TOGETHER = 30 * 60e3;
+const GIVE_UP = 24 * 3600e3;
+
+type Fixture = { d: string; status: string };
+
+/** Instant de récupération des scores de chaque match : la fin estimée du dernier match de son groupe. */
+export function scoreSlots<M extends Fixture>(matches: M[]): Map<M, number> {
+  const out = new Map<M, number>();
+  const ends = matches
+    .filter(m => m.status !== 'postponed' && m.status !== 'canceled')
+    .map(m => ({ m, end: Date.parse(m.d) + MATCH_END }))
+    .sort((a, b) => a.end - b.end);
+  for (let i = 0; i < ends.length; ) {
+    let k = i;
+    while (k + 1 < ends.length && ends[k + 1].end - ends[k].end <= TOGETHER) k++;
+    for (let x = i; x <= k; x++) out.set(ends[x].m, ends[k].end);
+    i = k + 1;
+  }
+  return out;
+}
+
+/** Dernière récupération de scores passée (ms), ou 0. */
+export function lastScoreSlot(matches: Fixture[], now = Date.now()): number {
+  return Math.max(0, ...[...scoreSlots(matches).values()].filter(t => t <= now && t > now - GIVE_UP));
+}
+
+/** Matchs dont l'heure de récupération est passée (depuis moins de 24 h) mais dont on n'a pas encore le score. */
+export function awaitingScores<M extends Fixture>(matches: M[], now = Date.now()): M[] {
+  return [...scoreSlots(matches)].filter(([m, t]) => t <= now && t > now - GIVE_UP && (m.status === 'notstarted' || m.status === 'live')).map(([m]) => m);
+}

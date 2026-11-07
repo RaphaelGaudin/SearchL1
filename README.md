@@ -75,7 +75,7 @@ L'app est alors servie à `https://<ton-compte>.github.io/SearchL1/`.
 
 ## Actualisation des données dans l'app
 
-Les données sont mises à jour **le lundi à 18 h 30 et le vendredi à 8 h** (heure de Paris). L'app recharge toute seule les nouvelles données la première fois qu'elle est ouverte (ou revient au premier plan) après un de ces créneaux. Bouton « Actualiser les données » dans l'onglet Plus.
+Les données sont mises à jour **le lundi à 18 h 30 et le vendredi à 8 h** (heure de Paris). L'app recharge toute seule les nouvelles données la première fois qu'elle est ouverte (ou revient au premier plan) après un de ces créneaux. En plus, **à la fin de chaque match de Ligue 1** (2 h après le coup d'envoi), le Mac récupère les scores de la journée, les buteurs et les stats des joueurs si Sofascore les a déjà publiées (sinon elles arrivent à la mise à jour suivante). Des matchs qui finissent ensemble (multiplex, à 30 minutes près) donnent une seule récupération, après le dernier ; si un score manque encore, nouvel essai toutes les 30 minutes pendant 24 h. Bouton « Actualiser les données » dans l'onglet Plus.
 
 Une app installée depuis Safari ne peut pas tourner en arrière-plan sur iOS, et Sofascore refuse les requêtes venant d'un autre site que le sien : le téléphone ne peut donc pas interroger Sofascore lui-même. Les fichiers de données sont produits par `npm run data` (sur le Mac, d'où Sofascore répond) ou, pour les scores seulement, par la GitHub Action.
 
@@ -85,7 +85,7 @@ Une app installée depuis Safari ne peut pas tourner en arrière-plan sur iOS, e
 zsh scripts/mac/install.sh
 ```
 
-Installe une tâche macOS (launchd) qui, **le lundi à 18 h 30 et le vendredi à 8 h**, récupère les nouvelles données, commite `public/data` et pousse sur GitHub, ce qui redéploie le site. Si le Mac dort à l'heure dite, la tâche tourne à son réveil ; s'il est éteint, elle saute ce créneau. Journal : `~/Library/Logs/searchl1-donnees.log`. macOS interdisant aux tâches de fond de lire `~/Documents`, la tâche travaille dans sa propre copie du dépôt (`~/Library/Application Support/SearchL1/depot`) : fais `git pull` dans ton dossier pour y récupérer les données qu'elle a poussées. La GitHub Action passe une heure plus tard en secours (scores seulement) si le Mac n'a rien poussé.
+Installe une tâche macOS (launchd) qui, **le lundi à 18 h 30 et le vendredi à 8 h**, récupère les nouvelles données, commite `public/data` et pousse sur GitHub, ce qui redéploie le site. Elle passe aussi toutes les 10 minutes pour récupérer les scores des matchs qui viennent de finir (`npm run data -- --scores`) : sans rien à faire, elle s'arrête aussitôt. Si le Mac dort à l'heure dite, la tâche tourne à son réveil ; s'il est éteint, elle saute ce créneau. Journal : `~/Library/Logs/searchl1-donnees.log`. macOS interdisant aux tâches de fond de lire `~/Documents`, la tâche travaille dans sa propre copie du dépôt (`~/Library/Application Support/SearchL1/depot`) : fais `git pull` dans ton dossier pour y récupérer les données qu'elle a poussées. La GitHub Action passe une heure plus tard en secours (scores seulement) si le Mac n'a rien poussé.
 
 Désinstaller : `launchctl bootout gui/$(id -u)/com.searchl1.donnees`, puis supprimer `~/Library/LaunchAgents/com.searchl1.donnees.plist` et `~/Library/Application Support/SearchL1`.
 

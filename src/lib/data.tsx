@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { buildData, type Data } from './model.ts';
-import { slot } from './schedule.ts';
-import type { HistoryFile, MetaFile, PalmaresFile, SeasonFile } from './types.ts';
+import { awaitingScores, lastScoreSlot, slot } from './schedule.ts';
+import type { HistoryFile, Match, MetaFile, PalmaresFile, SeasonFile } from './types.ts';
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Data };
 export interface Freshness { refreshing: boolean; checkedAt: number; refresh: () => void }
@@ -18,7 +18,8 @@ async function load<T>(name: string): Promise<T> {
 
 /**
  * Charge les données, puis les recharge toute seule quand un créneau de mise à jour (lundi 18 h 30, vendredi 8 h)
- * est passé depuis le dernier chargement : à l'ouverture de l'app, au retour au premier plan et toutes les 5 minutes.
+ * ou une fin de match est passé depuis le dernier chargement : à l'ouverture de l'app, au retour au premier plan
+ * et toutes les 5 minutes.
  */
 export function DataProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: 'loading' });
@@ -26,6 +27,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [checkedAt, setCheckedAt] = useState(0);
   const history = useRef<HistoryFile | null>(null);
   const updatedAt = useRef<string | null>(null);
+  const fullAt = useRef<string | null>(null);
+  const matches = useRef<Match[]>([]);
   const busy = useRef(false);
 
   const fetchAll = useCallback(async (force: boolean) => {
@@ -42,6 +45,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ]);
         history.current = hist;
         updatedAt.current = meta.updatedAt;
+        fullAt.current = meta.fullAt ?? meta.updatedAt;
+        matches.current = season.matches;
         setState({ status: 'ready', data: buildData(meta, season, hist, palm) });
       }
       setCheckedAt(Date.now());
@@ -56,12 +61,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => { fetchAll(true); }, [fetchAll]);
 
   useEffect(() => {
-    // Nouveau créneau depuis la dernière vérification, ou données encore antérieures au dernier créneau
-    // (mise à jour pas encore publiée) : dans ce cas on revérifie toutes les 5 minutes jusqu'à les recevoir.
+    // Nouveau créneau ou fin de match depuis la dernière vérification, ou données encore en retard (mise à jour
+    // complète pas encore publiée, score d'un match fini qui manque) : on revérifie toutes les 5 minutes.
     const due = () => {
       if (document.visibilityState !== 'visible' || checkedAt === 0) return false;
-      const last = slot();
-      const late = updatedAt.current != null && Date.parse(updatedAt.current) < last;
+      const last = Math.max(slot(), lastScoreSlot(matches.current));
+      const late = (fullAt.current != null && Date.parse(fullAt.current) < slot()) || awaitingScores(matches.current).length > 0;
       return last > checkedAt || (late && Date.now() - checkedAt >= 5 * 60e3);
     };
     const check = () => { if (due()) fetchAll(false); };
