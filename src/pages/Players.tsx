@@ -46,6 +46,8 @@ const VIEWS: Record<string, { label: string; main: string; cols: string[]; pos?:
   supersubs: { label: 'Supersubs', main: 'subAvg', cols: ['subs', 'starts', 'g', 'a'] },
 };
 const SORTS = ['ptsAvg', 'value', 'prix', 'pts', 'trend', 'subAvg', 'g', 'a', 'note', 'min', 'tk', 'sav', 'cs', 'xg', 'xa', 'kp', 'y'];
+// Paliers de prix maximum, en étoiles (budget de départ du jeu : 160 pour 16 joueurs).
+const PRIX_MAX = [5, 7, 9, 11, 13, 15];
 const MIN_OPTS: [string, string][] = [['auto', 'Temps de jeu : auto'], ['0', 'Tous les temps de jeu'], ['90', '90 min et +'], ['270', '270 min et +'], ['450', '450 min et +']];
 
 export function Players() {
@@ -67,6 +69,7 @@ export function Players() {
   const role = get('role', 'all');
   const minSel = get('min', 'auto');
   const only = get('seul', '');
+  const prixMax = get('prix', 'all');
   const sort = get('tri', V.main);
   const [q, setQ] = useState('');
   const [limit, setLimit] = useState(50);
@@ -77,6 +80,7 @@ export function Players() {
     ...(club !== 'all' ? [{ k: 'club', label: club }] : []),
     ...(role !== 'all' ? [{ k: 'role', label: role === 'tit' ? 'Plutôt titulaires' : 'Plutôt remplaçants' }] : []),
     ...(minSel !== 'auto' ? [{ k: 'min', label: MIN_OPTS.find(o => o[0] === minSel)![1].replace('Tous les temps de jeu', 'Tout temps de jeu') }] : []),
+    ...(prixMax !== 'all' ? [{ k: 'prix', label: `${prixMax} ★ max` }] : []),
     ...(only ? [{ k: 'seul', label: only === 'dispo' ? 'Disponibles' : only === 'ss' ? 'Bons supersubs' : 'Favoris' }] : []),
   ];
 
@@ -90,10 +94,11 @@ export function Players() {
         w.apps > 0 && (pos === 'all' || p.pos === pos) && (club === 'all' || p.club === club) &&
         (view === 'supersubs' ? w.subs > 0 : w.min >= minMin || (view === 'discipline' && w.y + w.rc > 0)) &&
         (role === 'all' || (role === 'tit' ? w.starts >= w.subs : w.subs > w.starts)) &&
+        (prixMax === 'all' || (p.prix != null && p.prix <= Number(prixMax))) &&
         (only !== 'dispo' || (!p.absence && !p.left)) && (only !== 'ss' || p.superSub) && (only !== 'fav' || fav.isPlayer(p.id)) &&
         (!s || norm(`${p.n} ${p.club}`).includes(s)))
       .sort((a, b) => (S[sort].v(b.s, b.p) ?? -Infinity) - (S[sort].v(a.s, a.p) ?? -Infinity));
-  }, [d, period, pos, club, role, minSel, only, sort, q, view, fav]);
+  }, [d, period, pos, club, role, minSel, only, prixMax, sort, q, view, fav]);
 
   const clubs = [...CLUB_NAMES].sort((a, b) => a.localeCompare(b, 'fr'));
   const fmt = (k: string, w: WindowStats, p: PlayerStats) => {
@@ -170,6 +175,9 @@ export function Players() {
                       {clubs.map(c => <option key={c} value={c}>{c}</option>)}
                     </select><Icon name="down" size={18} /></label>
                   </Field>
+                  <Field label="Prix au jeu (maximum)">
+                    <Chips value={prixMax} options={[['all', 'Tous'], ...PRIX_MAX.map(v => [String(v), `${v} ★`] as [string, string])]} onPick={v => set('prix', v, 'all')} />
+                  </Field>
                   <Field label="Rôle">
                     <Chips value={role} options={[['all', 'Tous'], ['tit', 'Plutôt titulaires'], ['remp', 'Plutôt remplaçants']]} onPick={v => set('role', v, 'all')} />
                   </Field>
@@ -187,7 +195,7 @@ export function Players() {
                   </Field>
                 </div>
                 <div className="sheet-actions">
-                  <button className="textbtn" onClick={() => { const p = new URLSearchParams(params); ['poste', 'club', 'role', 'min', 'seul'].forEach(k => p.delete(k)); setParams(p, { replace: true }); }}>Réinitialiser</button>
+                  <button className="textbtn" onClick={() => { const p = new URLSearchParams(params); ['poste', 'club', 'role', 'min', 'prix', 'seul'].forEach(k => p.delete(k)); setParams(p, { replace: true }); }}>Réinitialiser</button>
                   <button className="primary-btn" onClick={() => setSheet(null)}>Voir {rows.length} joueurs</button>
                 </div>
               </>

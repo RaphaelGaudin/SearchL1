@@ -4,7 +4,7 @@ import { Crest } from '../components/Crest.tsx';
 import { NavBar, Star } from '../components/Glass.tsx';
 import { Logo } from '../components/Icon.tsx';
 import { PlayerRow } from '../components/PlayerRow.tsx';
-import { Chip, Empty, Form, Group, Row, Section } from '../components/ui.tsx';
+import { Chip, Empty, Form, Group, Price, Row, Section } from '../components/ui.tsx';
 import { CLUBS } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
 import { useFavorites } from '../lib/favorites.ts';
@@ -43,7 +43,7 @@ export function Home() {
     list.filter(p => key(p) != null).sort((a, b) => key(b)! - key(a)!).slice(0, n);
   const lists: Record<Watch, { p: PlayerStats; v: number | null; d?: number; sub?: string; trend?: boolean }[]> = {
     forme: top(d.players.filter(p => p.l3Apps >= 2 && p.trend != null && !p.absence && !p.left), p => p.l3Avg).map(p => ({ p, v: p.l3Avg, trend: true })),
-    affaires: top(d.players.filter(p => p.starts >= minApps && !p.absence && !p.left && p.value != null), p => p.value).map(p => ({ p, v: p.value, d: 2, sub: `${POSITION[p.pos]} · ${p.club} · ${num(p.prix)} ★ · ${num(p.ptsAvg)} pts par match` })),
+    affaires: top(d.players.filter(p => p.starts >= minApps && !p.absence && !p.left && p.value != null), p => p.value).map(p => ({ p, v: p.value, d: 2, sub: `${POSITION[p.pos]} · ${p.club} · ${num(p.ptsAvg)} pts par match` })),
     supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.recentSubs} entrée${p.recentSubs > 1 ? 's' : ''}, ${p.recentStarts} titularisation${p.recentStarts > 1 ? 's' : ''} sur les 5 dernières journées` })),
     gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} match${p.starts > 1 ? 's' : ''} titulaire` })),
     defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} match${p.starts > 1 ? 's' : ''} titulaire` })),
@@ -154,7 +154,7 @@ export function Home() {
               {absent.slice(0, 3).map(p => (
                 <Row key={p.id} to={`/joueur/${p.id}`}>
                   <Crest club={p.club} size={24} />
-                  <span className="grow ellipsis"><span className="strong">{p.n}</span><small className="muted block ellipsis">{p.club} · {p.absence!.why} · {num(p.ptsAvg)} pts par match</small></span>
+                  <span className="grow ellipsis"><span className="strong">{p.n}</span><small className="muted block ellipsis">{p.prix != null && <><Price v={p.prix} /> · </>}{p.club} · {p.absence!.why} · {num(p.ptsAvg)} pts par match</small></span>
                   <Chip tone={ABSENCE[p.absence!.type].tone}>{ABSENCE[p.absence!.type].label}</Chip>
                 </Row>
               ))}

@@ -54,22 +54,32 @@ function useCompactDock() {
   return compact;
 }
 
-/** Glissement depuis le bord gauche = retour (en mode app plein écran, iOS ne le fait pas tout seul). */
+/**
+ * Glissement depuis le bord gauche = retour. Selon la version d'iOS, l'app installée fait déjà ce retour toute seule :
+ * on ne revient en arrière que si iOS ne l'a pas fait (sinon on reculait de deux pages, par exemple jusqu'à « Joueurs »
+ * au lieu de l'accueil d'où l'on venait).
+ */
 function useEdgeSwipeBack() {
   const navigate = useNavigate();
   useEffect(() => {
-    let start: { x: number; y: number } | null = null;
+    let start: { x: number; y: number; at: number } | null = null;
+    let lastPop = 0;
+    const pop = () => { lastPop = Date.now(); };
     // Pas depuis la barre d'onglets : y glisser sert à changer d'onglet.
-    const down = (e: TouchEvent) => { const t = e.touches[0]; start = t.clientX < 24 && !(e.target as Element).closest?.('.tabbar') ? { x: t.clientX, y: t.clientY } : null; };
+    const down = (e: TouchEvent) => { const t = e.touches[0]; start = t.clientX < 24 && !(e.target as Element).closest?.('.tabbar') ? { x: t.clientX, y: t.clientY, at: Date.now() } : null; };
     const up = (e: TouchEvent) => {
-      if (!start) return;
-      const t = e.changedTouches[0];
-      if (t.clientX - start.x > 80 && Math.abs(t.clientY - start.y) < 60 && window.history.state?.idx > 0) navigate(-1);
+      const s = start;
       start = null;
+      if (!s) return;
+      const t = e.changedTouches[0];
+      if (t.clientX - s.x <= 80 || Math.abs(t.clientY - s.y) >= 60 || !(window.history.state?.idx > 0)) return;
+      // Le retour d'iOS arrive pendant ou juste après l'animation de fin du geste.
+      setTimeout(() => { if (lastPop < s.at) navigate(-1); }, 450);
     };
+    window.addEventListener('popstate', pop);
     window.addEventListener('touchstart', down, { passive: true });
     window.addEventListener('touchend', up, { passive: true });
-    return () => { window.removeEventListener('touchstart', down); window.removeEventListener('touchend', up); };
+    return () => { window.removeEventListener('popstate', pop); window.removeEventListener('touchstart', down); window.removeEventListener('touchend', up); };
   }, [navigate]);
 }
 

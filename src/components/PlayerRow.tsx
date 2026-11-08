@@ -3,7 +3,7 @@ import { clubByName } from '../lib/clubs.ts';
 import { POSITION } from '../lib/format.ts';
 import type { PlayerStats } from '../lib/model.ts';
 import { SuperSubBadge } from './Glass.tsx';
-import { Row } from './ui.tsx';
+import { Price, Row } from './ui.tsx';
 
 // Photos absentes ou en erreur : on ne les redemande pas à chaque affichage.
 const noPhoto = new Set<number>();
@@ -38,7 +38,7 @@ export function PlayerRow({ p, value, extra, sub, to }: { p: PlayerStats; value:
       <Avatar name={p.n} club={p.club} id={p.id} />
       <span className="grow ellipsis">
         <PlayerName p={p} />
-        <small className="muted block ellipsis">{sub ?? `${POSITION[p.pos]} · ${p.club}`}</small>
+        <small className="muted block ellipsis">{p.prix != null && <><Price v={p.prix} /> · </>}{sub ?? `${POSITION[p.pos]} · ${p.club}`}</small>
       </span>
       <span className="right-stack">
         <span className="num-md">{value}</span>

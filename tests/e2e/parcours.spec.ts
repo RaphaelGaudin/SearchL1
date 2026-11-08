@@ -272,10 +272,43 @@ test('Prix du Championnat des Étoiles : fiche joueur, bonnes affaires, comparai
   for (let i = 1; i < vals.length; i++) expect(vals[i]).toBeLessThanOrEqual(vals[i - 1]);
   await noHorizontalOverflow(page);
   await shot(page, '14-bonnes-affaires');
-  // Accueil : liste « Bonnes affaires ».
+  // Filtre « Prix au jeu (maximum) » : aucun joueur au-dessus du plafond.
+  await page.goto('/#/joueurs');
+  await page.getByRole('button', { name: /Filtres/ }).click();
+  await page.getByRole('radio', { name: '9 ★' }).click();
+  await page.getByRole('button', { name: /^Voir \d+ joueurs/ }).click();
+  await expect(page.getByRole('button', { name: 'Retirer le filtre 9 ★ max' })).toBeVisible();
+  const prices = (await page.locator('.pcard .price').allInnerTexts()).map(t => Number(t.replace('★', '').replace(',', '.')));
+  expect(prices.length).toBeGreaterThan(0);
+  for (const v of prices) expect(v).toBeLessThanOrEqual(9);
+  // Accueil : liste « Bonnes affaires », prix sur les lignes de joueurs.
   await page.goto('/');
   await page.getByRole('tab', { name: 'Bonnes affaires' }).click();
   await expect(page.locator('.row', { hasText: '★' }).first()).toBeVisible();
+});
+
+test('Glisser depuis le bord gauche revient à la page d\'avant, même quand iOS fait déjà le retour', async ({ page }) => {
+  const swipe = (native: boolean) => page.evaluate(async native => {
+    // WebKit ne laisse pas construire de Touch : un événement simple avec les mêmes champs suffit au gestionnaire.
+    const fire = (type: string, x: number) => {
+      const e = new Event(type);
+      const t = [{ clientX: x, clientY: 400 }];
+      Object.defineProperties(e, { touches: { value: type === 'touchend' ? [] : t }, changedTouches: { value: t } });
+      window.dispatchEvent(e);
+    };
+    fire('touchstart', 10);
+    fire('touchend', 200);
+    if (native) history.back(); // le retour fait par iOS lui-même
+    await new Promise(r => setTimeout(r, 700));
+  }, native);
+  for (const native of [false, true]) {
+    await page.goto('/#/joueurs');
+    await page.locator('.tabbar').getByRole('link', { name: 'Accueil' }).click();
+    await page.locator('a[href^="#/joueur/"]').first().click();
+    await expect(page).toHaveURL(/#\/joueur\/\d+/);
+    await swipe(native);
+    await expect(page).toHaveURL(/#\/$/);
+  }
 });
 
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {
