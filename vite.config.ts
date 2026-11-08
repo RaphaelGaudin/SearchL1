@@ -31,6 +31,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        // Notifications « compo » (envoyées par le Mac quand la composition d'un match sort).
+        importScripts: ['push-sw.js'],
         // Données : réseau d'abord (pour avoir la dernière mise à jour), cache si hors ligne ou réseau trop lent.
         runtimeCaching: [
           { urlPattern: /\/data\/.*\.json$/, handler: 'NetworkFirst', options: { cacheName: 'donnees', networkTimeoutSeconds: 6 } },

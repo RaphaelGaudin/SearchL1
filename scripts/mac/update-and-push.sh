@@ -18,6 +18,9 @@ export PATH="$NODE_DIR:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 exec >>"$LOG" 2>&1
 cd "$REPO" || exit 1
 
+# Alertes « compo » sur le prochain match (indépendantes des mises à jour) : silencieux s'il n'y a rien à envoyer.
+[ -f scripts/alerts.mts ] && { npx --no-install tsx scripts/alerts.mts || echo "Alertes compo : échec (nouvel essai dans 10 minutes)."; }
+
 # Que faire ? (vérification sans réseau sur la copie locale, donc silencieuse quand il n'y a rien à faire)
 # stale.mts : 0 = mise à jour complète due, 2 = scores de matchs qui viennent de finir, 1 = rien.
 mode() { npx --no-install tsx scripts/stale.mts --full --scores >/dev/null 2>&1; echo $?; }

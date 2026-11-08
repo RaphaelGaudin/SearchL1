@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { FavButton, NavBar, SuperSubBadge } from '../components/Glass.tsx';
@@ -10,7 +11,9 @@ import { PositionCompare } from '../components/PositionCompare.tsx';
 import { Card, Chip, Empty, Estimate, Group, Price, Section, SubNav, useTab } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
 import { dayShort, monthYear, num, POSITION, signed, time } from '../lib/format.ts';
-import { windowStats } from '../lib/model.ts';
+import { useAlerts } from '../lib/alerts.ts';
+import { windowStats, type PlayerStats } from '../lib/model.ts';
+import type { Match } from '../lib/types.ts';
 
 const ABS = { B: ['down', 'Blessé'], S: ['down', 'Suspendu'], D: ['warn', 'Incertain'], C: ['neutral', 'Non retenu'] } as const;
 
@@ -64,6 +67,7 @@ export function PlayerPage() {
           </div>
         </div>
       </header>
+      {!p.left && upcoming[0] && upcoming[0].status === 'notstarted' && <AlertButton p={p} m={upcoming[0]} />}
 
       <SubNav items={TABS} value={tab} onChange={setTab} />
 
@@ -188,6 +192,40 @@ function CompareIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M7 4 3 8l4 4M3 8h13M17 12l4 4-4 4M21 16H8" />
+    </svg>
+  );
+}
+
+/** Alerte « compo » sur le prochain match : notification quand la composition sort (titulaire, remplaçant, absent). */
+function AlertButton({ p, m }: { p: PlayerStats; m: Match }) {
+  const { has, toggle } = useAlerts();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const on = has(p.id);
+  const opp = m.h === p.club ? m.a : m.h;
+  const click = async () => {
+    setBusy(true); setErr(null);
+    setErr(await toggle({ id: p.id, name: p.n, club: p.club, match: m.id, kickoff: m.d, opp }));
+    setBusy(false);
+  };
+  return (
+    <div className="alert-box">
+      <button type="button" className={`alert-btn${on ? ' on' : ''}`} onClick={click} disabled={busy} aria-pressed={on}>
+        <BellIcon on={on} />
+        <span className="grow">
+          <span className="strong">{on ? 'Alerte compo activée' : 'Me prévenir quand la compo sort'}</span>
+          <small className="muted block">{m.h === p.club ? 'vs' : 'à'} {opp} · {dayShort(m.d)} {time(m.d)}{on ? ' · touche pour annuler' : ' · titulaire, remplaçant ou absent'}</small>
+        </span>
+      </button>
+      {err && <p className="small alert-err" role="alert">{err}</p>}
+    </div>
+  );
+}
+
+function BellIcon({ on }: { on: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9Z" /><path d="M10 19a2 2 0 0 0 4 0" />
     </svg>
   );
 }

@@ -1,0 +1,10 @@
+# Petit serveur d'alertes « compo » de SearchL1 (Cloudflare Workers, offre gratuite).
+# Il garde, pour chaque téléphone, son abonnement aux notifications et ses alertes ; le Mac les lit et envoie les notifications.
+name = "searchl1-alertes"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Espace de stockage créé par « wrangler kv namespace create ALERTES ».
+[[kv_namespaces]]
+binding = "ALERTES"
+id = "8dbb2df886f74dc0bd704e5f7c588c09"

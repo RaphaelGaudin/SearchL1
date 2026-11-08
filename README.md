@@ -126,3 +126,10 @@ Design : maquette Figma « SearchL1 — maquette iPhone ». Fond craie, accent v
 ## Prix du Championnat des Étoiles
 
 Les prix des joueurs (en étoiles), la moyenne officielle du jeu et le % de sélection viennent de lechampionnatdesetoiles.fr. Ils ne sont visibles qu'une fois connecté au jeu : pas de récupération automatique. Pour les rafraîchir, se connecter au jeu dans un navigateur, relever la liste des joueurs dans `scripts/lcde/prix.txt` (une ligne par joueur : `nom complet|club|poste|prix|moyenne|% sélection`), puis lancer `npx tsx scripts/import-prix.mts`, qui écrit `public/data/prix.json` en rattachant chaque joueur du jeu aux nôtres par nom et club.
+
+## Alertes « compo »
+
+Sur la fiche d'un joueur, « Me prévenir quand la compo sort » envoie une notification quand la composition officielle de son prochain match est publiée (environ 1 h avant) : titulaire, remplaçant, absent ou pas dans le groupe. Fonctionne dans l'app installée sur l'écran d'accueil (iOS 16.4+).
+
+- `worker/` : petit serveur Cloudflare Workers (gratuit) qui garde, par téléphone, l'abonnement aux notifications et les alertes. Déploiement : `cd worker && npx wrangler deploy`.
+- `scripts/alerts.mts` : lancé par la tâche du Mac toutes les 10 minutes ; regarde les compositions sur Sofascore à partir de 75 min avant le match et envoie les notifications. Réglages hors dépôt dans `~/Library/Application Support/SearchL1/alertes.json` (adresse du serveur, clé secrète, clés VAPID).

@@ -728,3 +728,12 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .price { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .price i { font-style: normal; color: #E0A800; margin-left: 2px; }
 .chips-inline .chip { max-width: 100%; white-space: normal; }
+
+/* ---------- alerte « compo » sur la fiche joueur ---------- */
+.alert-box { display: grid; gap: 6px; }
+.alert-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; text-align: left; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--ink); font: inherit; }
+.alert-btn > svg { color: var(--accent); flex: none; }
+.alert-btn.on { background: var(--accent-soft); border-color: transparent; }
+.alert-btn:disabled { opacity: .6; }
+.alert-err { margin: 0; color: var(--down); }

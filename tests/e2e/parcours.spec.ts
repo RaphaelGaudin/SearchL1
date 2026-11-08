@@ -311,6 +311,22 @@ test('Glisser depuis le bord gauche revient à la page d\'avant, même quand iOS
   }
 });
 
+test('Alerte compo : bouton sur la fiche joueur, message clair quand les notifications ne sont pas possibles', async ({ page }) => {
+  const season = JSON.parse(fs.readFileSync('public/data/season.json', 'utf8'));
+  const next = season.matches.find((m: { status: string }) => m.status === 'notstarted');
+  const p = season.players.find((x: { club: string; logs: unknown[] }) => x.club === next.h && x.logs.length > 3);
+  // Le navigateur de test n'a pas l'autorisation des notifications : le serveur ne doit pas être appelé.
+  let called = false;
+  await page.route('**/searchl1-alertes.**', route => { called = true; return route.abort(); });
+  await page.goto(`/#/joueur/${p.id}`);
+  const btn = page.getByRole('button', { name: /Me prévenir quand la compo sort/ });
+  await expect(btn).toBeVisible();
+  await btn.click();
+  await expect(page.getByRole('alert')).toContainText(/Notifications|notifications/);
+  await expect(btn).toHaveAttribute('aria-pressed', 'false');
+  expect(called).toBe(false);
+});
+
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {
   await page.goto('/#/matchs');
   await expect(page.locator('.tabbar')).toBeVisible();

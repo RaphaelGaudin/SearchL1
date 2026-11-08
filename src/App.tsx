@@ -5,6 +5,7 @@ import { SearchSheet } from './components/SearchSheet.tsx';
 import { DataProvider, useData, useFreshness } from './lib/data.tsx';
 import { slot } from './lib/schedule.ts';
 import { useTheme, type Theme } from './lib/theme.ts';
+import { useAlerts } from './lib/alerts.ts';
 import { UiCtx } from './lib/ui-context.ts';
 import { Bareme } from './pages/Bareme.tsx';
 import { ClubPage } from './pages/ClubPage.tsx';
@@ -99,6 +100,22 @@ function Freshness() {
 }
 
 const THEMES: [Theme, string][] = [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']];
+
+/** Alertes « compo » en cours (réglées depuis les fiches joueurs). */
+function AlertsList() {
+  const { alerts } = useAlerts();
+  if (!alerts.length) return null;
+  return (
+    <div className="group">
+      {alerts.map(a => (
+        <NavLink key={a.id} to={`/joueur/${a.id}`} className="row link">
+          <Icon name="info" />
+          <span className="grow">Alerte compo : {a.name}<small className="muted block">vs {a.opp} · {new Date(a.kickoff).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })}</small></span>
+        </NavLink>
+      ))}
+    </div>
+  );
+}
 
 /** Choix du thème : automatique (suit l'iPhone), clair ou sombre. */
 function ThemePicker() {
@@ -213,6 +230,7 @@ function Layout() {
                 </NavLink>
               ))}
             </div>
+            <AlertsList />
             <div className="group"><ThemePicker /></div>
             <div className="group"><Freshness /></div>
           </div>
