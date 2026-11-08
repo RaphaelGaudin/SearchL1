@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { buildData, type Data } from './model.ts';
 import { awaitingScores, lastScoreSlot, slot } from './schedule.ts';
-import type { HistoryFile, Match, MatchSheet, MetaFile, PalmaresFile, SeasonFile, SheetsFile } from './types.ts';
+import type { HistoryFile, Match, MatchSheet, MetaFile, PalmaresFile, PrixFile, SeasonFile, SheetsFile } from './types.ts';
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Data };
 export interface Freshness { refreshing: boolean; checkedAt: number; refresh: () => void }
@@ -38,16 +38,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const meta = await load<MetaFile>('meta');
       if (force || meta.updatedAt !== updatedAt.current) {
-        const [season, hist, palm] = await Promise.all([
+        const [season, hist, palm, prix] = await Promise.all([
           load<SeasonFile>('season'), history.current ? history.current : load<HistoryFile>('history'),
           // Palmarès facultatif : l'app marche sans.
           load<PalmaresFile>('palmares').catch(() => null),
+          // Prix du Championnat des Étoiles : facultatifs aussi (relevés à la main sur le site du jeu).
+          load<PrixFile>('prix').catch(() => null),
         ]);
         history.current = hist;
         updatedAt.current = meta.updatedAt;
         fullAt.current = meta.fullAt ?? meta.updatedAt;
         matches.current = season.matches;
-        setState({ status: 'ready', data: buildData(meta, season, hist, palm) });
+        setState({ status: 'ready', data: buildData(meta, season, hist, palm, prix) });
       }
       setCheckedAt(Date.now());
     } catch (e) {

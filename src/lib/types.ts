@@ -72,6 +72,8 @@ export interface Player {
 /** Palmarès : titres par joueur (TheSportsDB) et par club (Wikidata). */
 export interface Honour { title: string; season: string; team?: string }
 export interface ClubTitle { comp: string; seasons: string[] }
+/** Prix du Championnat des Étoiles (en étoiles), moyenne de points et % de sélection dans le jeu. */
+export interface PrixFile { updatedAt: string; players: Record<string, { prix: number; moy: number | null; sel: number | null }> }
 /** Joueur parti de son club de L1 (club actuel d'après Wikidata ; null : sans club connu). */
 export interface Move { team: string | null; since?: string }
 export interface PalmaresFile {

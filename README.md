@@ -122,3 +122,7 @@ public/data/      données générées (commitées)
 ```
 
 Design : maquette Figma « SearchL1 — maquette iPhone ». Fond craie, accent vert pelouse, vert nuit en mode sombre, police Archivo. Logos officiels des clubs téléchargés une fois depuis le serveur d'images de Sofascore dans `public/logos` (`npm run data -- --logos` pour les retélécharger) ; si un logo manque, l'app affiche un écusson stylisé aux couleurs du club. Ces logos sont des marques déposées de leurs clubs : usage personnel, non commercial. Photos des joueurs (WebP, environ 9 Ko chacune) téléchargées de la même façon dans `public/photos` pour chaque nouveau joueur (`npm run data -- --photos` pour tout retélécharger) ; elles ne sont pas préchargées mais gardées en cache au fil de la consultation, et à défaut l'app affiche les initiales. Mêmes réserves d'usage.
+
+## Prix du Championnat des Étoiles
+
+Les prix des joueurs (en étoiles), la moyenne officielle du jeu et le % de sélection viennent de lechampionnatdesetoiles.fr. Ils ne sont visibles qu'une fois connecté au jeu : pas de récupération automatique. Pour les rafraîchir, se connecter au jeu dans un navigateur, relever la liste des joueurs dans `scripts/lcde/prix.txt` (une ligne par joueur : `nom complet|club|poste|prix|moyenne|% sélection`), puis lancer `npx tsx scripts/import-prix.mts`, qui écrit `public/data/prix.json` en rattachant chaque joueur du jeu aux nôtres par nom et club.

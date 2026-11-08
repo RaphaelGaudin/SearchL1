@@ -4,7 +4,7 @@ import { dayGap, parisDay } from './format.ts';
 import { dayNum, fit, predict, type Context, type Fit, type H2hMatch, type ModelMatch, type Prediction } from './predict.ts';
 import { matchPoints, type MatchPoints } from './scoring.ts';
 import { buildTable, type TableRow } from './standings.ts';
-import type { Absence, CupMatch, HistoryFile, Match, MetaFile, Move, PalmaresFile, Player, PlayerLog, SeasonFile } from './types.ts';
+import type { Absence, CupMatch, HistoryFile, Match, MetaFile, Move, PalmaresFile, Player, PlayerLog, PrixFile, SeasonFile } from './types.ts';
 
 export interface ScoredLog extends PlayerLog { P: MatchPoints }
 
@@ -49,6 +49,12 @@ export interface PlayerStats extends Omit<Player, 'logs'> {
   absence: Absence | null;
   /** Parti de son club de L1 en cours de saison (d'après Wikidata) : plus dans l'effectif ni dans les conseils. */
   left: Move | null;
+  /** Prix au Championnat des Étoiles (étoiles), moyenne officielle du jeu et % de joueurs qui l'ont choisi. */
+  prix: number | null;
+  gameAvg: number | null;
+  selection: number | null;
+  /** Rapport qualité-prix : points par match (estimés) par étoile. */
+  value: number | null;
 }
 
 export interface Meeting { s: string; d: string; h: string; a: string; hg: number; ag: number; j: number }
@@ -77,9 +83,17 @@ export interface Data {
   /** Classements finaux depuis 2014-15. */
   finals: { s: string; table: TableRow[] }[];
   palmares: PalmaresFile | null;
+  /** Date du relevé des prix du jeu (null : pas de prix). */
+  prixAt: string | null;
 }
 
-export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFile, palmares: PalmaresFile | null = null): Data {
+// Qualité-prix sur nos points par match : ils vont avec nos filtres de temps de jeu (la moyenne du jeu compte
+// aussi les joueurs d'un seul match, qui fausseraient le classement).
+function price(g: PrixFile['players'][string] | undefined, ptsAvg: number | null) {
+  return { prix: g?.prix ?? null, gameAvg: g?.moy ?? null, selection: g?.sel ?? null, value: g && ptsAvg != null && g.prix > 0 ? ptsAvg / g.prix : null };
+}
+
+export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFile, palmares: PalmaresFile | null = null, prixFile: PrixFile | null = null): Data {
   const matches = season.matches;
   const byId = new Map(matches.map(m => [m.id, m]));
   const rounds = new Map<number, Match[]>();
@@ -120,6 +134,7 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
       superSub: !palmares?.moves?.[p.id] && isSuperSub(recent, avg(sub), sub.length),
       absence: absences.find(a => a.playerId === p.id) ?? null,
       left: palmares?.moves?.[p.id] ?? null,
+      ...price(prixFile?.players[p.id], ptsAvg),
     };
   });
   const playerById = new Map(players.map(p => [p.id, p]));
@@ -169,7 +184,7 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
 
   const finals = history.seasons.map(S => ({ s: S.s, table: buildTable(S.m.map(r => ({ j: r[0], d: r[1], h: r[2], a: r[3], hg: r[4], ag: r[5] }))) }));
 
-  return { meta, season, matches, byId, rounds, lastRound, nextRound, table, prevTable, players, playerById, cupsByClub, absByClub, model, predictions, meetings, cupsAround, predictBefore, finals, palmares };
+  return { meta, season, matches, byId, rounds, lastRound, nextRound, table, prevTable, players, playerById, cupsByClub, absByClub, model, predictions, meetings, cupsAround, predictBefore, finals, palmares, prixAt: prixFile?.updatedAt ?? null };
 }
 
 /**

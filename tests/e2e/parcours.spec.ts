@@ -258,6 +258,26 @@ test('Accueil : logo, nom et journée dans la barre du haut, carte de bienvenue 
   await expect(page.locator('.welcome')).toHaveCount(0);
 });
 
+test('Prix du Championnat des Étoiles : fiche joueur, bonnes affaires, comparaison', async ({ page }) => {
+  const prix = JSON.parse(fs.readFileSync('public/data/prix.json', 'utf8'));
+  test.skip(!Object.keys(prix.players).length, 'pas de prix');
+  await page.goto('/#/joueur/155995');
+  await expect(page.getByText(/Prix au jeu/)).toBeVisible();
+  await expect(page.getByText('points par étoile (qualité-prix)')).toBeVisible();
+  // Vue « Bonnes affaires » : triée par points par étoile, du meilleur au moins bon.
+  await page.goto('/#/joueurs?vue=affaires');
+  await expect(page.getByRole('tab', { name: 'Bonnes affaires' })).toHaveAttribute('aria-selected', 'true');
+  const vals = (await page.locator('.pcard .right-stack .num-md').allInnerTexts()).slice(0, 10).map(t => Number(t.replace(',', '.')));
+  expect(vals.length).toBeGreaterThan(3);
+  for (let i = 1; i < vals.length; i++) expect(vals[i]).toBeLessThanOrEqual(vals[i - 1]);
+  await noHorizontalOverflow(page);
+  await shot(page, '14-bonnes-affaires');
+  // Accueil : liste « Bonnes affaires ».
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Bonnes affaires' }).click();
+  await expect(page.locator('.row', { hasText: '★' }).first()).toBeVisible();
+});
+
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {
   await page.goto('/#/matchs');
   await expect(page.locator('.tabbar')).toBeVisible();

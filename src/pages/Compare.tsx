@@ -13,8 +13,10 @@ import { windowStats, type Period, type PlayerStats, type WindowStats } from '..
 const COLOR = ['var(--s1)', 'var(--s2)'];
 const PERIODS: [Period, string][] = [['saison', 'Saison'], [5, '5 dernières J'], [3, '3 dernières J']];
 
-type Stat = { k: string; label: string; v: (w: WindowStats) => number | null; fmt?: (w: WindowStats) => string; d?: number; low?: boolean; keepers?: boolean };
+type Stat = { k: string; label: string; v: (w: WindowStats, p: PlayerStats) => number | null; fmt?: (w: WindowStats) => string; d?: number; low?: boolean; keepers?: boolean };
 const STATS: Stat[] = [
+  { k: 'prix', label: 'Prix au jeu (étoiles)', v: (_, p) => p.prix, d: 1, low: true },
+  { k: 'value', label: 'Points par étoile', v: (_, p) => p.value, d: 2 },
   { k: 'avg', label: 'Points par match', v: w => w.ptsAvg, d: 1 },
   { k: 'pts', label: 'Points au total', v: w => w.pts, d: 0 },
   { k: 'apps', label: 'Matchs joués', v: w => w.apps, fmt: w => `${w.apps} (${w.starts} tit.)` },
@@ -82,7 +84,7 @@ export function Compare() {
           </div>
           <Section title="Statistiques" meta={period === 'saison' ? `J1 à J${d.lastRound}` : `J${w[0]!.from} à J${w[0]!.to}`}>
             <Card className="flush">
-              {STATS.filter(s => !s.keepers || keepers).map(s => <StatRow key={s.k} s={s} a={w[0]!} b={w[1]!} />)}
+              {STATS.filter(s => (!s.keepers || keepers) && (s.k !== 'prix' && s.k !== 'value' || A.prix != null || B.prix != null)).map(s => <StatRow key={s.k} s={s} a={w[0]!} b={w[1]!} pa={A} pb={B} />)}
             </Card>
             <p className="small muted">En gras, le meilleur des deux. La barre partage le total entre les deux joueurs.</p>
           </Section>
@@ -100,8 +102,8 @@ export function Compare() {
   );
 }
 
-function StatRow({ s, a, b }: { s: Stat; a: WindowStats; b: WindowStats }) {
-  const va = s.v(a), vb = s.v(b);
+function StatRow({ s, a, b, pa, pb }: { s: Stat; a: WindowStats; b: WindowStats; pa: PlayerStats; pb: PlayerStats }) {
+  const va = s.v(a, pa), vb = s.v(b, pb);
   const show = (w: WindowStats, v: number | null): ReactNode => (s.fmt ? s.fmt(w) : v == null ? '—' : num(v, s.d ?? 1));
   // Comparé à l'arrondi affiché : deux « 25,5 » ne désignent pas de meilleur.
   const r = (v: number) => Math.round(v * 10 ** (s.d ?? 1));

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { LargeTitle, NavBar, Star, SuperSubBadge } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Avatar, PlayerName } from '../components/PlayerRow.tsx';
-import { Chip, Empty } from '../components/ui.tsx';
+import { Chip, Empty, Price } from '../components/ui.tsx';
 import { CLUB_NAMES } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
 import { useFavorites } from '../lib/favorites.ts';
@@ -29,10 +29,14 @@ const S: Record<string, Stat> = {
   xg: { label: 'xG', v: s => s.xg }, xa: { label: 'xA', v: s => s.xa }, kp: { label: 'passes clés', v: s => s.kp, d: 0 },
   subAvg: { label: 'pts/entrée', v: s => s.subAvg }, subs: { label: 'entrées', v: s => s.subs, d: 0 }, starts: { label: 'titularisations', v: s => s.starts, d: 0 },
   trend: { label: 'tendance', v: (_, p) => p.trend },
+  prix: { label: 'prix', v: (_, p) => p.prix },
+  value: { label: 'points par étoile', v: (_, p) => p.value, d: 2 },
+  sel: { label: 'choisi par', v: (_, p) => p.selection, fmt: x => `${x} %` },
 };
 
 const VIEWS: Record<string, { label: string; main: string; cols: string[]; pos?: string }> = {
   synthese: { label: 'Synthèse', main: 'ptsAvg', cols: [] },
+  affaires: { label: 'Bonnes affaires', main: 'value', cols: ['prix', 'ptsAvg', 'sel'] },
   forme: { label: 'Forme', main: 'ptsAvg', cols: [] },
   points: { label: 'Points par source', main: 'ptsAvg', cols: ['team', 'noteP', 'actions', 'defense', 'cards'] },
   gardiens: { label: 'Gardiens', main: 'ptsAvg', cols: ['sav', 'conc', 'cs', 'savePct', 'gp'], pos: 'G' },
@@ -41,7 +45,7 @@ const VIEWS: Record<string, { label: string; main: string; cols: string[]; pos?:
   discipline: { label: 'Discipline', main: 'y', cols: ['rc', 'og', 'cards'] },
   supersubs: { label: 'Supersubs', main: 'subAvg', cols: ['subs', 'starts', 'g', 'a'] },
 };
-const SORTS = ['ptsAvg', 'pts', 'trend', 'subAvg', 'g', 'a', 'note', 'min', 'tk', 'sav', 'cs', 'xg', 'xa', 'kp', 'y'];
+const SORTS = ['ptsAvg', 'value', 'prix', 'pts', 'trend', 'subAvg', 'g', 'a', 'note', 'min', 'tk', 'sav', 'cs', 'xg', 'xa', 'kp', 'y'];
 const MIN_OPTS: [string, string][] = [['auto', 'Temps de jeu : auto'], ['0', 'Tous les temps de jeu'], ['90', '90 min et +'], ['270', '270 min et +'], ['450', '450 min et +']];
 
 export function Players() {
@@ -201,7 +205,7 @@ export function Players() {
                 <PlayerName p={p} />
                 <small className="muted block ellipsis">{POSITION[p.pos]} · {p.club}</small>
                 {view === 'synthese' && (
-                  <small className="muted block ellipsis">{w.apps} match{w.apps > 1 ? 's' : ''} · {w.g} but{w.g > 1 ? 's' : ''} · {w.a} passe{w.a > 1 ? 's' : ''}{w.noteAvg != null ? ` · note ${num(w.noteAvg)}` : ''}</small>
+                  <small className="muted block ellipsis">{p.prix != null && <><Price v={p.prix} /> · </>}{w.apps} match{w.apps > 1 ? 's' : ''} · {w.g} but{w.g > 1 ? 's' : ''} · {w.a} passe{w.a > 1 ? 's' : ''}{w.noteAvg != null ? ` · note ${num(w.noteAvg)}` : ''}</small>
                 )}
               </span>
               {fav.isPlayer(p.id) && <span className="fav-mark" aria-label="Favori"><Star filled size={14} /></span>}

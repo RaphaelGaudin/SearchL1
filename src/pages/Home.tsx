@@ -19,9 +19,10 @@ function useNow(every = 30_000) {
   return now;
 }
 
-type Watch = 'forme' | 'supersubs' | 'gardiens' | 'defenseurs';
+type Watch = 'forme' | 'affaires' | 'supersubs' | 'gardiens' | 'defenseurs';
 const WATCH: { k: Watch; label: string; meta: string; vue: string }[] = [
   { k: 'forme', label: 'En forme', meta: 'Points par match sur les 3 dernières journées. La flèche : la hausse par rapport à sa moyenne de la saison.', vue: 'synthese&periode=3' },
+  { k: 'affaires', label: 'Bonnes affaires', meta: 'Points par match pour chaque étoile dépensée au jeu : ceux qui rapportent le plus pour leur prix.', vue: 'affaires' },
   { k: 'supersubs', label: 'Supersubs', meta: 'Remplaçants qui rapportent beaucoup quand ils entrent en jeu (points par entrée).', vue: 'supersubs' },
   { k: 'gardiens', label: 'Gardiens', meta: 'Meilleurs gardiens : points par match sur la saison.', vue: 'gardiens' },
   { k: 'defenseurs', label: 'Défenseurs', meta: 'Meilleurs défenseurs : points par match sur la saison.', vue: 'defense&poste=D' },
@@ -40,8 +41,9 @@ export function Home() {
   const minApps = Math.max(2, Math.ceil(d.lastRound / 2));
   const top = (list: PlayerStats[], key: (p: PlayerStats) => number | null, n = 5) =>
     list.filter(p => key(p) != null).sort((a, b) => key(b)! - key(a)!).slice(0, n);
-  const lists: Record<Watch, { p: PlayerStats; v: number | null; sub?: string; trend?: boolean }[]> = {
+  const lists: Record<Watch, { p: PlayerStats; v: number | null; d?: number; sub?: string; trend?: boolean }[]> = {
     forme: top(d.players.filter(p => p.l3Apps >= 2 && p.trend != null && !p.absence && !p.left), p => p.l3Avg).map(p => ({ p, v: p.l3Avg, trend: true })),
+    affaires: top(d.players.filter(p => p.starts >= minApps && !p.absence && !p.left && p.value != null), p => p.value).map(p => ({ p, v: p.value, d: 2, sub: `${POSITION[p.pos]} · ${p.club} · ${num(p.prix)} ★ · ${num(p.ptsAvg)} pts par match` })),
     supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.recentSubs} entrée${p.recentSubs > 1 ? 's' : ''}, ${p.recentStarts} titularisation${p.recentStarts > 1 ? 's' : ''} sur les 5 dernières journées` })),
     gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} match${p.starts > 1 ? 's' : ''} titulaire` })),
     defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} match${p.starts > 1 ? 's' : ''} titulaire` })),
@@ -136,8 +138,8 @@ export function Home() {
             </div>
             <p className="small muted">{W.meta}</p>
             <Group>
-              {lists[watch].map(({ p, v, sub, trend }) => (
-                <PlayerRow key={p.id} p={p} value={num(v)} sub={sub}
+              {lists[watch].map(({ p, v, d: dec, sub, trend }) => (
+                <PlayerRow key={p.id} p={p} value={num(v, dec ?? 1)} sub={sub}
                   extra={trend && p.trend != null ? <Chip tone={p.trend >= 0 ? 'accent' : 'down'}>{p.trend >= 0 ? '↑' : '↓'} {num(Math.abs(p.trend))}</Chip> : undefined} />
               ))}
               {!lists[watch].length && <Empty>Pas encore assez de matchs.</Empty>}

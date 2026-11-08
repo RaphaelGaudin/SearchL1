@@ -424,7 +424,7 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .pcard-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 4px; margin: 0; }
 .minis > div { background: var(--surface-2); border-radius: 8px; padding: 3px 8px; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
-.minis dt { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.minis dt { font-size: 11px; color: var(--muted); line-height: 1.15; }
 .minis dd { margin: 0; font-stretch: 75%; font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
 .formgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); gap: 3px; }
 .fcell { height: 26px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; font-stretch: 75%; color: var(--ink); }
@@ -447,7 +447,7 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .chips-inline { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .tile { display: grid; gap: 2px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
-.tile .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .small { line-height: 1.2; overflow-wrap: anywhere; }
 .card.trend { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
 .jtag { width: 30px; flex: none; }
 .detail-pad { padding: 8px 16px 12px 64px; display: flex; }
@@ -723,3 +723,8 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .countdown-box { display: grid; justify-items: end; gap: 0; }
 .hint-text { margin: -4px 0 0; }
 .hint-text .cup-tag { vertical-align: 1px; }
+
+/* ---------- prix du Championnat des Étoiles ---------- */
+.price { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.price i { font-style: normal; color: #E0A800; margin-left: 2px; }
+.chips-inline .chip { max-width: 100%; white-space: normal; }

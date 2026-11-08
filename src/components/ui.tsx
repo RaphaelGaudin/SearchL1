@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Result } from '../lib/standings.ts';
-import { pct } from '../lib/format.ts';
+import { num, pct } from '../lib/format.ts';
 
 export function Section({ title, meta, children, id }: { title: string; meta?: ReactNode; children: ReactNode; id?: string }) {
   return (
@@ -108,6 +108,11 @@ export function SubNav({ items, value, onChange }: { items: [string, string][]; 
 
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty muted">{children}</div>;
+}
+
+/** Prix au Championnat des Étoiles : « 15,2 ★ » (l'étoile pleine dorée ; l'étoile des favoris est un contour). */
+export function Price({ v }: { v: number }) {
+  return <span className="price" aria-label={`${num(v)} étoiles`}>{num(v)}<i aria-hidden="true">★</i></span>;
 }
 
 export function Estimate() {

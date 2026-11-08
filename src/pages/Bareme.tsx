@@ -8,6 +8,8 @@ const POS = ['G', 'D', 'M', 'A'] as const;
 const LEXIQUE: [string, string][] = [
   ['Points par match', "Moyenne des points gagnés par le joueur à chaque match joué, avec le barème ci-dessous. C'est le chiffre principal pour choisir."],
   ['Estimés', "La note L'Équipe d'un joueur n'est pas publique : elle est estimée à partir de la note Sofascore, donc les points aussi."],
+  ['Prix (★)', "Ce que coûte le joueur au Championnat des Étoiles, en étoiles (budget de départ : 160). Relevé sur le site du jeu."],
+  ['Points par étoile', 'Points par match divisés par le prix : plus c\'est haut, meilleur est le rapport qualité-prix.'],
   ['Titulaire / entrée', 'Titulaire : a commencé le match. Entrée : est entré en cours de match.'],
   ['Supersub', 'Remplaçant habitué à entrer en jeu et qui rapporte beaucoup quand il entre (ses points comptent triple au jeu).'],
   ['Journée (J10)', 'Les 9 matchs joués le même week-end. La saison en compte 34.'],

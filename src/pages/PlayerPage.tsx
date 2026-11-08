@@ -7,7 +7,7 @@ import { PlayerPalmares, PlayerProfile } from '../components/Palmares.tsx';
 import { PointsChart } from '../components/PointsChart.tsx';
 import { PointsDetail } from '../components/PointsDetail.tsx';
 import { PositionCompare } from '../components/PositionCompare.tsx';
-import { Card, Chip, Empty, Estimate, Group, Section, SubNav, useTab } from '../components/ui.tsx';
+import { Card, Chip, Empty, Estimate, Group, Price, Section, SubNav, useTab } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
 import { dayShort, monthYear, num, POSITION, signed, time } from '../lib/format.ts';
 import { windowStats } from '../lib/model.ts';
@@ -58,6 +58,7 @@ export function PlayerPage() {
           <PlayerProfile p={p} />
           <div className="chips-inline">
             {p.superSub && <Chip tone="accent"><SuperSubBadge small subAvg={p.subAvg} /> Bon supersub · {num(p.subAvg)} pts/entrée · {p.recentSubs} entrées sur 5 j.</Chip>}
+            {p.prix != null && <Chip tone="neutral">Prix au jeu <Price v={p.prix} />{p.selection != null ? ` · ${p.selection} % le choisissent` : ''}</Chip>}
             {p.left && <Chip tone="neutral">A quitté {p.club}{p.left.team ? ` · ${p.left.team}` : ''}{p.left.since ? ` depuis ${monthYear(p.left.since)}` : ''}</Chip>}
             {p.absence && <Chip tone={ABS[p.absence.type][0]}>{ABS[p.absence.type][1]} · {p.absence.why}</Chip>}
           </div>
@@ -72,6 +73,8 @@ export function PlayerPage() {
             <div className="tile"><b className="num-lg accent">{num(season.ptsAvg)}</b><span className="small muted">points par match</span></div>
             <div className="tile"><b className="num-lg">{season.apps}</b><span className="small muted">match{season.apps > 1 ? 's' : ''} ({season.starts} titulaire{season.subs ? `, ${season.subs} entrée${season.subs > 1 ? 's' : ''}` : ''})</span></div>
             <div className="tile"><b className="num-lg">{season.g}<span className="muted"> / </span>{season.a}</b><span className="small muted">buts / passes</span></div>
+            {p.gameAvg != null && <div className="tile"><b className="num-lg">{num(p.gameAvg)}</b><span className="small muted">moyenne officielle du jeu</span></div>}
+            {p.value != null && <div className="tile"><b className="num-lg">{num(p.value, 2)}</b><span className="small muted">points par étoile (qualité-prix)</span></div>}
           </div>
           {trendLabel && (
             <div className="trend-line">
