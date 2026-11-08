@@ -4,6 +4,18 @@ import { BAREME } from '../lib/scoring.ts';
 
 const POS = ['G', 'D', 'M', 'A'] as const;
 
+// Lexique pour qui découvre l'app : les termes qu'on retrouve partout.
+const LEXIQUE: [string, string][] = [
+  ['Points par match', "Moyenne des points gagnés par le joueur à chaque match joué, avec le barème ci-dessous. C'est le chiffre principal pour choisir."],
+  ['Estimés', "La note L'Équipe d'un joueur n'est pas publique : elle est estimée à partir de la note Sofascore, donc les points aussi."],
+  ['Titulaire / entrée', 'Titulaire : a commencé le match. Entrée : est entré en cours de match.'],
+  ['Supersub', 'Remplaçant habitué à entrer en jeu et qui rapporte beaucoup quand il entre (ses points comptent triple au jeu).'],
+  ['Journée (J10)', 'Les 9 matchs joués le même week-end. La saison en compte 34.'],
+  ['Pronostic', "Chances de victoire de chaque équipe, calculées d'après les résultats des 3 dernières saisons, la forme, le terrain et les absents."],
+  ['Clean sheet', "Match sans but encaissé : des points en plus pour le gardien et les défenseurs."],
+  ['xG / xA', 'Buts et passes décisives attendus : la qualité des occasions créées, même quand elles ne finissent pas au fond.'],
+];
+
 export function Bareme() {
   const B = BAREME;
   const line = (label: string, v: Record<(typeof POS)[number], number>) => (
@@ -11,9 +23,14 @@ export function Bareme() {
   );
   return (
     <div className="page">
-      <NavBar title="Calcul des points" back="Plus" fallback="/" />
+      <NavBar title="Calcul des points" back="Retour" fallback="/" />
       <LargeTitle>Calcul des points</LargeTitle>
       <p className="small muted">Barème du Championnat des Étoiles (L'Équipe), règlement 2018-19 : dernière version publique trouvée. Les points affichés dans l'app sont des estimations.</p>
+      <Section title="Les mots de l'app">
+        <Group>
+          {LEXIQUE.map(([k, v]) => <div key={k} className="row lex-row"><span className="grow"><span className="strong">{k}</span><small className="muted block">{v}</small></span></div>)}
+        </Group>
+      </Section>
       <Section title="Points d'équipe" meta="au prorata des minutes / 90">
         <Group>
           <Row><span className="grow">Domicile : victoire / nul / défaite</span><span className="num-sm">{B.team.h.V} / {B.team.h.N} / {B.team.h.D}</span></Row>

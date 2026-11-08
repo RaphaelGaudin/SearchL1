@@ -46,7 +46,7 @@ export function PlayerPage() {
   return (
     <div className="page">
       <NavBar title={p.n} back="Retour" fallback="/joueurs" right={<>
-        <Link to={`/comparer?a=${p.id}`} className="glass-btn" aria-label={`Comparer ${p.n} à un autre joueur`}><CompareIcon /></Link>
+        <Link to={`/comparer?a=${p.id}`} className="glass-pill nb-pill" aria-label={`Comparer ${p.n} à un autre joueur`}><CompareIcon />Comparer</Link>
         <FavButton kind="player" id={p.id} label={p.n} />
       </>} />
 
@@ -69,8 +69,8 @@ export function PlayerPage() {
       {tab === 'resume' && (
         <Section title="Résumé" meta={<>saison <Estimate /></>} id="resume">
           <div className="tiles">
-            <div className="tile"><b className="num-lg accent">{num(season.ptsAvg)}</b><span className="small muted">pts/match</span></div>
-            <div className="tile"><b className="num-lg">{season.apps}</b><span className="small muted">{season.starts} tit. · {season.subs} entr.</span></div>
+            <div className="tile"><b className="num-lg accent">{num(season.ptsAvg)}</b><span className="small muted">points par match</span></div>
+            <div className="tile"><b className="num-lg">{season.apps}</b><span className="small muted">match{season.apps > 1 ? 's' : ''} ({season.starts} titulaire{season.subs ? `, ${season.subs} entrée${season.subs > 1 ? 's' : ''}` : ''})</span></div>
             <div className="tile"><b className="num-lg">{season.g}<span className="muted"> / </span>{season.a}</b><span className="small muted">buts / passes</span></div>
           </div>
           {trendLabel && (

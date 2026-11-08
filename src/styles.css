@@ -351,7 +351,6 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .navbar-glass.scrolled .nb-title { opacity: 1; transform: none; }
 .large-title { display: grid; gap: 2px; padding-top: 4px; }
 .large-title h1 { font-size: 34px; }
-.home-brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
 @media (min-width: 900px) {
   .navbar-glass { position: sticky; top: 64px; height: auto; padding: 8px 0; margin: -16px 0 0; grid-template-columns: 1fr 0 1fr; background: transparent !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .nb-title { display: none; }
@@ -711,3 +710,16 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .cmp-line .small { text-align: center; color: var(--muted); }
 .cmp-bar { display: flex; gap: 2px; height: 6px; }
 .cmp-bar i { border-radius: 3px; min-width: 2px; }
+
+/* ---------- accueil épuré : marque dans la barre du haut, carte de bienvenue ---------- */
+.nb-brand { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; white-space: nowrap; }
+.nb-brand .brand { font-size: 19px; gap: 0; }
+.nb-brand .small { margin-left: 2px; }
+.nb-pill { gap: 6px; padding: 0 14px; min-height: 44px; font-weight: 600; font-size: 14px; color: var(--ink); }
+.welcome { gap: 10px; border-color: transparent; box-shadow: inset 0 0 0 2px var(--accent-soft); }
+.welcome .h2 { font-size: 20px; }
+.welcome-list { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: var(--ink); }
+.welcome-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.countdown-box { display: grid; justify-items: end; gap: 0; }
+.hint-text { margin: -4px 0 0; }
+.hint-text .cup-tag { vertical-align: 1px; }

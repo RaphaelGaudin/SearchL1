@@ -111,5 +111,5 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 
 export function Estimate() {
-  return <span className="estimate" title="Points calculés avec une note L'Équipe estimée à partir de la note Sofascore">est.</span>;
+  return <span className="estimate" title="Points calculés avec une note L'Équipe estimée à partir de la note Sofascore">estimés</span>;
 }

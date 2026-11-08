@@ -21,10 +21,10 @@ function useNow(every = 30_000) {
 
 type Watch = 'forme' | 'supersubs' | 'gardiens' | 'defenseurs';
 const WATCH: { k: Watch; label: string; meta: string; vue: string }[] = [
-  { k: 'forme', label: 'En forme', meta: 'pts/match sur les 3 dernières J, écart avec la saison', vue: 'synthese&periode=3' },
-  { k: 'supersubs', label: 'Supersubs', meta: 'pts par entrée en jeu', vue: 'supersubs' },
-  { k: 'gardiens', label: 'Gardiens', meta: 'pts/match sur la saison', vue: 'gardiens' },
-  { k: 'defenseurs', label: 'Défenseurs', meta: 'pts/match sur la saison', vue: 'defense&poste=D' },
+  { k: 'forme', label: 'En forme', meta: 'Points par match sur les 3 dernières journées. La flèche : la hausse par rapport à sa moyenne de la saison.', vue: 'synthese&periode=3' },
+  { k: 'supersubs', label: 'Supersubs', meta: 'Remplaçants qui rapportent beaucoup quand ils entrent en jeu (points par entrée).', vue: 'supersubs' },
+  { k: 'gardiens', label: 'Gardiens', meta: 'Meilleurs gardiens : points par match sur la saison.', vue: 'gardiens' },
+  { k: 'defenseurs', label: 'Défenseurs', meta: 'Meilleurs défenseurs : points par match sur la saison.', vue: 'defense&poste=D' },
 ];
 
 export function Home() {
@@ -32,6 +32,7 @@ export function Home() {
   const fav = useFavorites();
   const now = useNow();
   const [watch, setWatch] = usePref<Watch>('accueil-liste', 'forme');
+  const [welcome, setWelcome] = usePref<'' | 'vu'>('bienvenue', '');
   const next = d.nextRound != null ? (d.rounds.get(d.nextRound) ?? []).filter(m => m.status !== 'finished').sort((a, b) => a.d.localeCompare(b.d)) : [];
   const first = next.find(m => Date.parse(m.d) > now) ?? next[0];
   const days = [...new Set(next.map(m => parisDay(m.d)))];
@@ -41,9 +42,9 @@ export function Home() {
     list.filter(p => key(p) != null).sort((a, b) => key(b)! - key(a)!).slice(0, n);
   const lists: Record<Watch, { p: PlayerStats; v: number | null; sub?: string; trend?: boolean }[]> = {
     forme: top(d.players.filter(p => p.l3Apps >= 2 && p.trend != null && !p.absence && !p.left), p => p.l3Avg).map(p => ({ p, v: p.l3Avg, trend: true })),
-    supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.recentSubs} entrée${p.recentSubs > 1 ? 's' : ''}, ${p.recentStarts} tit. sur 5 j.` })),
-    gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
-    defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
+    supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.recentSubs} entrée${p.recentSubs > 1 ? 's' : ''}, ${p.recentStarts} titularisation${p.recentStarts > 1 ? 's' : ''} sur les 5 dernières journées` })),
+    gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} match${p.starts > 1 ? 's' : ''} titulaire` })),
+    defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} match${p.starts > 1 ? 's' : ''} titulaire` })),
   };
   const W = WATCH.find(w => w.k === watch)!;
   const absent = d.players.filter(p => p.absence && p.starts >= 2 && !p.left).sort((a, b) => importance(b) - importance(a));
@@ -53,11 +54,26 @@ export function Home() {
 
   return (
     <div className="page">
-      <NavBar title="SearchL1" />
-      <header className="home-brand">
-        <span className="brand big"><Logo size={36} /><span>Search<b>L1</b></span></span>
-        <span className="small muted">J{d.lastRound} jouée</span>
-      </header>
+      <NavBar title="SearchL1" center={
+        <span className="nb-brand"><Logo size={28} /><span className="brand">Search<b>L1</b></span><span className="small muted">J{d.lastRound} jouée</span></span>
+      } />
+
+      {!welcome && (
+        <div className="card welcome">
+          <h2 className="h2">Bienvenue sur SearchL1</h2>
+          <p className="small">L'app qui t'aide à choisir tes joueurs de Ligue 1 pour le <b>Championnat des Étoiles</b> de L'Équipe.</p>
+          <ul className="welcome-list small">
+            <li><b>Points par match</b> : après chaque match, chaque joueur gagne des points (note, buts, passes, victoire…). Plus il en marque, meilleur est le choix.</li>
+            <li><b>Matchs</b> : les chances de victoire de chaque équipe et les feuilles de match.</li>
+            <li><b>Joueurs</b> : tous les joueurs classés par points. <b>Infirmerie</b> : qui est blessé ou suspendu.</li>
+            <li>Touche l'<b>étoile</b> d'un joueur ou d'un club pour le retrouver ici.</li>
+          </ul>
+          <div className="welcome-actions">
+            <Link to="/bareme" className="textlink">Comment sont calculés les points ›</Link>
+            <button type="button" className="primary-btn" onClick={() => setWelcome('vu')}>Compris</button>
+          </div>
+        </div>
+      )}
 
       {first && (
         <Link to={`/matchs?j=${d.nextRound}`} className="card next next-link">
@@ -66,8 +82,11 @@ export function Home() {
               <span className="small muted block">Prochaine journée</span>
               <span className="h2">J{d.nextRound} · {days.length > 1 ? `${dateShort(days[0])} – ${dateShort(days[days.length - 1])}` : dayShort(days[0])}</span>
             </span>
-            <span className="countdown" aria-live="polite">
-              {countdown(Date.parse(first.d) - now).map(c => <span key={c.u}><b className="num-lg accent">{c.n}</b><span className="small muted"> {c.u}</span></span>)}
+            <span className="countdown-box">
+              <span className="countdown" aria-live="polite">
+                {countdown(Date.parse(first.d) - now).map(c => <span key={c.u}><b className="num-lg accent">{c.n}</b><span className="small muted"> {c.u}</span></span>)}
+              </span>
+              <span className="tiny muted">avant le 1er match</span>
             </span>
           </div>
           <span className="next-first">
@@ -78,7 +97,7 @@ export function Home() {
         </Link>
       )}
 
-      <Section title="Favoris">
+      {(favPlayers.length > 0 || fav.clubs.length > 0) && <Section title="Favoris">
         {fav.clubs.length > 0 && (
           <div className="rail fav-clubs">
             {fav.clubs.map(c => {
@@ -102,15 +121,12 @@ export function Home() {
               return (
                 <PlayerRow key={p.id} p={p} value={num(p.ptsAvg)}
                   sub={`${p.club}${m ? ` · ${m.h === p.club ? 'vs' : 'à'} ${m.h === p.club ? m.a : m.h}` : ''}${p.absence ? ' · absent' : ''}`}
-                  extra={<span className="tiny muted">pts/match</span>} />
+                  extra={<span className="tiny muted">pts par match</span>} />
               );
             })}
           </Group>
         )}
-        {!favPlayers.length && !fav.clubs.length && (
-          <p className="hint-line small muted"><Star filled={false} size={16} /> Touchez l'étoile d'une fiche joueur ou club pour l'épingler ici.</p>
-        )}
-      </Section>
+      </Section>}
 
       <div className="cols">
         <div>
@@ -118,7 +134,7 @@ export function Home() {
             <div className="seg glass-seg watch-seg" role="tablist" aria-label="Liste de joueurs">
               {WATCH.map(w => <button key={w.k} role="tab" aria-selected={watch === w.k} onClick={() => setWatch(w.k)}>{w.label}</button>)}
             </div>
-            <p className="tiny muted">{W.meta}</p>
+            <p className="small muted">{W.meta}</p>
             <Group>
               {lists[watch].map(({ p, v, sub, trend }) => (
                 <PlayerRow key={p.id} p={p} value={num(v)} sub={sub}
@@ -136,7 +152,7 @@ export function Home() {
               {absent.slice(0, 3).map(p => (
                 <Row key={p.id} to={`/joueur/${p.id}`}>
                   <Crest club={p.club} size={24} />
-                  <span className="grow ellipsis"><span className="strong">{p.n}</span><small className="muted block ellipsis">{p.club} · {p.absence!.why} · {num(p.ptsAvg)} pts/m</small></span>
+                  <span className="grow ellipsis"><span className="strong">{p.n}</span><small className="muted block ellipsis">{p.club} · {p.absence!.why} · {num(p.ptsAvg)} pts par match</small></span>
                   <Chip tone={ABSENCE[p.absence!.type].tone}>{ABSENCE[p.absence!.type].label}</Chip>
                 </Row>
               ))}

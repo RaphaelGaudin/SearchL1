@@ -21,7 +21,7 @@ export function useScrolled(threshold = 36) {
  * actions et recherche à droite, petit titre qui apparaît quand le grand titre de la page sort de l'écran
  * (comme les apps iOS). La barre du bas ne garde que les onglets.
  */
-export function NavBar({ title, back, fallback = '/', right }: { title: string; back?: string; fallback?: string; right?: ReactNode }) {
+export function NavBar({ title, back, fallback = '/', right, center }: { title: string; back?: string; fallback?: string; right?: ReactNode; center?: ReactNode }) {
   const scrolled = useScrolled();
   const navigate = useNavigate();
   const ui = useUi();
@@ -39,7 +39,7 @@ export function NavBar({ title, back, fallback = '/', right }: { title: string; 
           </button>
         )}
       </div>
-      <span className="nb-title" aria-hidden={!scrolled}>{title}</span>
+      {center ?? <span className="nb-title" aria-hidden={!scrolled}>{title}</span>}
       <div className="nb-side end">
         {right}
         <button className="glass-btn nb-search" onClick={ui.openSearch} aria-label="Rechercher">

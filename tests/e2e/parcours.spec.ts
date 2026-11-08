@@ -13,7 +13,9 @@ test('Accueil : prochaine journée, compte à rebours, listes et clubs', async (
   await page.goto('/');
   await expect(page.getByText('Prochaine journée')).toBeVisible();
   await expect(page.locator('.countdown b').first()).toHaveText(/\d+/);
-  for (const h of ['Favoris', 'Joueurs à suivre', 'Absents qui comptent', 'Classement', 'Clubs']) {
+  // Sans favori, la rubrique Favoris ne s'affiche pas (la carte de bienvenue explique l'étoile).
+  await expect(page.getByRole('heading', { name: 'Favoris', exact: true })).toHaveCount(0);
+  for (const h of ['Joueurs à suivre', 'Absents qui comptent', 'Classement', 'Clubs']) {
     await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
   }
   await expect(page.locator('.rail-item')).toHaveCount(18);
@@ -239,6 +241,23 @@ test('Comparer deux joueurs depuis une fiche, départs et palmarès', async ({ p
   await expect(page.getByText(`A quitté ${gone.club}`)).toBeVisible();
 });
 
+test('Accueil : logo, nom et journée dans la barre du haut, carte de bienvenue à la première visite', async ({ page }) => {
+  await page.goto('/');
+  const bar = page.locator('.navbar-glass');
+  await expect(bar.getByText('SearchL1')).toBeVisible();
+  await expect(bar.getByText(/^J\d+ jouée$/)).toBeVisible();
+  await expect(bar.getByRole('button', { name: 'Plus de rubriques' })).toBeVisible();
+  await expect(bar.getByRole('button', { name: 'Rechercher' })).toBeVisible();
+  const welcome = page.locator('.welcome');
+  await expect(welcome.getByRole('heading', { name: 'Bienvenue sur SearchL1' })).toBeVisible();
+  await noHorizontalOverflow(page);
+  await shot(page, '1b-bienvenue');
+  await welcome.getByRole('button', { name: 'Compris' }).click();
+  await expect(welcome).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.welcome')).toHaveCount(0);
+});
+
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {
   await page.goto('/#/matchs');
   await expect(page.locator('.tabbar')).toBeVisible();
@@ -288,7 +307,7 @@ test('Joueurs : filtres, badge supersub, vue Forme', async ({ page }) => {
   await expect(page.locator('.pcard .formgrid').first()).toBeVisible();
   await page.getByRole('tab', { name: 'Gardiens' }).click();
   await expect(page.locator('.pcard').first()).toContainText('Gardien');
-  await page.getByRole('button', { name: /^Tri|pts\/match/ }).first().click();
+  await page.getByRole('button', { name: /^Tri|pts par match/ }).first().click();
   const tri = page.getByRole('dialog', { name: 'Trier les joueurs' });
   await tri.getByRole('button', { name: 'arrêts' }).click();
   await expect(page.locator('.pcard .right-stack .tiny').first()).toHaveText('arrêts');

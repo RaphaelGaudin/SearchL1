@@ -77,6 +77,12 @@ function Round({ j, onPick }: { j: number; onPick: (j: number) => void }) {
         <h2>Journée {j}</h2>
         <span className="small muted">{played === ms.length ? 'terminée' : played ? `${played}/${ms.length} joués` : j === d.nextRound ? 'prochaine journée' : 'à venir'}</span>
       </div>
+      {played < ms.length && (
+        <p className="small muted hint-text">
+          Les pourcentages : chances de victoire de chaque équipe, et de match nul au milieu.
+          {ms.some(m => d.cupsAround(m.h, m.d).length || d.cupsAround(m.a, m.d).length) && <> Une pastille comme <span className="cup-tag t-LDC">LdC −4 j</span> : match de coupe d'Europe 4 jours avant (−) ou après (+), donc de la fatigue possible.</>}
+        </p>
+      )}
       {[...byDay.entries()].map(([day, list]) => (
         <div key={day} className="day">
           <h3 className="dayhead">{dayLong(list[0].d)}</h3>

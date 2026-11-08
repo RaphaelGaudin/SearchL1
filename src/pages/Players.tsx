@@ -13,26 +13,26 @@ import { PERIODS, windowStats, type Period, type PlayerStats, type WindowStats }
 type Stat = { label: string; v: (s: WindowStats, p: PlayerStats) => number | null; d?: number; fmt?: (x: number) => string };
 const pctFmt = (x: number) => `${Math.round(x * 100)} %`;
 const S: Record<string, Stat> = {
-  ptsAvg: { label: 'pts/match', v: s => s.ptsAvg },
+  ptsAvg: { label: 'pts par match', v: s => s.ptsAvg },
   pts: { label: 'points', v: s => s.pts, d: 0 },
   apps: { label: 'matchs', v: s => s.apps, d: 0 },
   min: { label: 'minutes', v: s => s.min, d: 0 },
   g: { label: 'buts', v: s => s.g, d: 0 },
   a: { label: 'passes', v: s => s.a, d: 0 },
-  note: { label: 'note moy.', v: s => s.noteAvg },
+  note: { label: 'note moyenne', v: s => s.noteAvg },
   team: { label: 'équipe', v: s => s.src.team }, noteP: { label: 'note', v: s => s.src.note }, actions: { label: 'actions', v: s => s.src.actions },
   defense: { label: 'défense', v: s => s.src.defense }, cards: { label: 'cartons', v: s => s.src.cards },
   sav: { label: 'arrêts', v: s => s.sav, d: 0 }, conc: { label: 'encaissés', v: s => s.conc, d: 0 }, cs: { label: 'clean sheets', v: s => s.cs, d: 0 },
   savePct: { label: '% arrêts', v: s => s.savePct, fmt: pctFmt }, gp: { label: 'buts évités', v: s => s.gp },
-  tk: { label: 'tacles', v: s => s.tk, d: 0 }, int: { label: 'interc.', v: s => s.int, d: 0 }, y: { label: 'jaunes', v: s => s.y, d: 0 },
+  tk: { label: 'tacles', v: s => s.tk, d: 0 }, int: { label: 'interceptions', v: s => s.int, d: 0 }, y: { label: 'jaunes', v: s => s.y, d: 0 },
   rc: { label: 'rouges', v: s => s.rc, d: 0 }, og: { label: 'csc', v: s => s.og, d: 0 }, pen: { label: 'penalties', v: s => s.pen, d: 0 },
   xg: { label: 'xG', v: s => s.xg }, xa: { label: 'xA', v: s => s.xa }, kp: { label: 'passes clés', v: s => s.kp, d: 0 },
-  subAvg: { label: 'pts/entrée', v: s => s.subAvg }, subs: { label: 'entrées', v: s => s.subs, d: 0 }, starts: { label: 'titul.', v: s => s.starts, d: 0 },
+  subAvg: { label: 'pts/entrée', v: s => s.subAvg }, subs: { label: 'entrées', v: s => s.subs, d: 0 }, starts: { label: 'titularisations', v: s => s.starts, d: 0 },
   trend: { label: 'tendance', v: (_, p) => p.trend },
 };
 
 const VIEWS: Record<string, { label: string; main: string; cols: string[]; pos?: string }> = {
-  synthese: { label: 'Synthèse', main: 'ptsAvg', cols: ['apps', 'g', 'a', 'note'] },
+  synthese: { label: 'Synthèse', main: 'ptsAvg', cols: [] },
   forme: { label: 'Forme', main: 'ptsAvg', cols: [] },
   points: { label: 'Points par source', main: 'ptsAvg', cols: ['team', 'noteP', 'actions', 'defense', 'cards'] },
   gardiens: { label: 'Gardiens', main: 'ptsAvg', cols: ['sav', 'conc', 'cs', 'savePct', 'gp'], pos: 'G' },
@@ -100,7 +100,7 @@ export function Players() {
   return (
     <div className="page">
       <NavBar title="Joueurs" />
-      <LargeTitle sub={`${rows.length} joueurs · ${PERIODS.find(x => x.k === period)!.label.toLowerCase()}`}>Joueurs</LargeTitle>
+      <LargeTitle sub={`${rows.length} joueurs classés par ${S[sort].label} · ${PERIODS.find(x => x.k === period)!.label.toLowerCase()}`}>Joueurs</LargeTitle>
 
       <label className="search-field inline">
         <Icon name="search" size={18} />
@@ -199,7 +199,10 @@ export function Players() {
               <Avatar name={p.n} club={p.club} id={p.id} />
               <span className="grow ellipsis">
                 <PlayerName p={p} />
-                <small className="muted block ellipsis">{POSITION[p.pos]} · {p.club} · {w.starts} tit.{w.subs ? ` · ${w.subs} entrée${w.subs > 1 ? 's' : ''}` : ''}</small>
+                <small className="muted block ellipsis">{POSITION[p.pos]} · {p.club}</small>
+                {view === 'synthese' && (
+                  <small className="muted block ellipsis">{w.apps} match{w.apps > 1 ? 's' : ''} · {w.g} but{w.g > 1 ? 's' : ''} · {w.a} passe{w.a > 1 ? 's' : ''}{w.noteAvg != null ? ` · note ${num(w.noteAvg)}` : ''}</small>
+                )}
               </span>
               {fav.isPlayer(p.id) && <span className="fav-mark" aria-label="Favori"><Star filled size={14} /></span>}
               {p.absence && <Chip tone={p.absence.type === 'D' ? 'warn' : 'down'}>{p.absence.type === 'S' ? 'Suspendu' : p.absence.type === 'D' ? 'Incertain' : p.absence.type === 'C' ? 'Absent' : 'Blessé'}</Chip>}

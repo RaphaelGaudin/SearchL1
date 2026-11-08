@@ -201,8 +201,8 @@ function absenceFactors(players: PlayerStats[], absByClub: Map<string, Absence[]
 
 export type Period = 'saison' | 5 | 3 | 1;
 export const PERIODS: { k: Period; label: string; short: string }[] = [
-  { k: 'saison', label: 'Saison', short: 'Saison' }, { k: 5, label: '5 dernières journées', short: '5 J' },
-  { k: 3, label: '3 dernières journées', short: '3 J' }, { k: 1, label: 'Dernière journée', short: 'Dern. J' },
+  { k: 'saison', label: 'Saison', short: 'Saison' }, { k: 5, label: '5 dernières journées', short: '5 journées' },
+  { k: 3, label: '3 dernières journées', short: '3 journées' }, { k: 1, label: 'Dernière journée', short: 'Dernière' },
 ];
 
 export interface WindowStats {
