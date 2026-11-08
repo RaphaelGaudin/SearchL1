@@ -140,11 +140,15 @@ test('Navigation : onglets, Plus, recherche, classement', async ({ page }) => {
   await noHorizontalOverflow(page);
   await shot(page, '6-classement');
 
-  await page.locator('.tabbar').getByRole('button', { name: 'Plus' }).click();
-  await expect(page.getByRole('dialog', { name: 'Plus de rubriques' })).toBeVisible();
+  // Plus de recherche ni de « Plus » dans la barre du bas : tous deux sont en haut.
+  await expect(page.locator('.tabbar .tb')).toHaveCount(5);
+  await page.getByRole('button', { name: 'Plus de rubriques' }).click();
+  const more = page.getByRole('dialog', { name: 'Plus de rubriques' });
+  await expect(more).toBeVisible();
+  for (const r of ['Équipes', 'Historique', 'Calcul des points', 'Actualiser les données']) await expect(more.getByText(r)).toBeVisible();
   await page.keyboard.press('Escape');
   await page.locator('.sheet-backdrop').click({ position: { x: 10, y: 10 } });
-  await page.locator('.search-orb').click();
+  await page.locator('.navbar-glass').getByRole('button', { name: 'Rechercher' }).click();
   const input = page.getByPlaceholder('Joueur, club ou match');
   await expect(input).toBeFocused();
   // 16 px minimum : iOS ne zoome pas sur le champ.
@@ -155,10 +159,36 @@ test('Navigation : onglets, Plus, recherche, classement', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Lens', level: 1 })).toBeVisible();
 });
 
+test('Barre du bas : glisser le doigt pour changer d\'onglet, un simple toucher marche toujours', async ({ page }) => {
+  await page.goto('/');
+  const bar = page.locator('.tabbar');
+  const center = async (name: string) => { const b = (await bar.getByRole('link', { name }).boundingBox())!; return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+  const from = await center('Accueil'), to = await center('Infirmerie');
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, to.y, { steps: 5 });
+  await expect(bar).toHaveClass(/dragging/);
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await expect(bar.locator('.tb.active')).toHaveText('Infirmerie');
+  await page.mouse.up();
+  await expect(page).toHaveURL(/#\/infirmerie/);
+  await expect(bar).not.toHaveClass(/dragging/);
+  // Retour en glissant vers la gauche, puis un toucher simple.
+  const back = await center('Matchs'), now = await center('Infirmerie');
+  await page.mouse.move(now.x, now.y);
+  await page.mouse.down();
+  await page.mouse.move(back.x, back.y, { steps: 8 });
+  await page.mouse.up();
+  await expect(page).toHaveURL(/#\/matchs/);
+  await bar.getByRole('link', { name: 'Classement' }).click();
+  await expect(page).toHaveURL(/#\/classement/);
+  await expect(bar.locator('.tb.active')).toHaveText('Classement');
+});
+
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {
   await page.goto('/#/matchs');
   await expect(page.locator('.tabbar')).toBeVisible();
-  for (const sel of ['.tabbar .tb', '.search-orb', '.iconbtn', '.select select', '.rd']) {
+  for (const sel of ['.tabbar .tb', '.navbar-glass .glass-btn', '.iconbtn', '.select select', '.rd']) {
     // Seuls les éléments affichés comptent (la barre du haut est masquée sur iPhone).
     const sizes = await page.locator(sel).evaluateAll(els => els.map(e => e.getBoundingClientRect()).filter(r => r.width > 0).map(r => Math.min(r.width, r.height)));
     expect(sizes.length, sel).toBeGreaterThan(0);

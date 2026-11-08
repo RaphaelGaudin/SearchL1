@@ -2,6 +2,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFavorites } from '../lib/favorites.ts';
+import { useUi } from '../lib/ui-context.ts';
 import { Icon } from './Icon.tsx';
 
 export function useScrolled(threshold = 36) {
@@ -16,25 +17,34 @@ export function useScrolled(threshold = 36) {
 }
 
 /**
- * Barre du haut en verre : retour à gauche, actions à droite, petit titre qui apparaît quand le grand titre
- * de la page sort de l'écran (comme les apps iOS). La recherche est dans le dock, à côté des onglets.
+ * Barre du haut en verre : retour à gauche (ou, sur les pages des onglets, le menu des autres rubriques),
+ * actions et recherche à droite, petit titre qui apparaît quand le grand titre de la page sort de l'écran
+ * (comme les apps iOS). La barre du bas ne garde que les onglets.
  */
 export function NavBar({ title, back, fallback = '/', right }: { title: string; back?: string; fallback?: string; right?: ReactNode }) {
   const scrolled = useScrolled();
   const navigate = useNavigate();
+  const ui = useUi();
   const goBack = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate(fallback));
   return (
     <div className={`navbar-glass${scrolled ? ' scrolled' : ''}`}>
       <div className="nb-side">
-        {back && (
+        {back ? (
           <button className="glass-btn" onClick={goBack} aria-label={`Retour : ${back}`}>
             <Icon name="left" size={22} />
+          </button>
+        ) : (
+          <button className="glass-btn nb-more" onClick={ui.openMore} aria-label="Plus de rubriques">
+            <Icon name="more" size={22} />
           </button>
         )}
       </div>
       <span className="nb-title" aria-hidden={!scrolled}>{title}</span>
       <div className="nb-side end">
         {right}
+        <button className="glass-btn nb-search" onClick={ui.openSearch} aria-label="Rechercher">
+          <Icon name="search" size={20} />
+        </button>
       </div>
     </div>
   );

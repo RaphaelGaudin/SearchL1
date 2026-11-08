@@ -30,8 +30,6 @@ const MORE: { to: string; label: string; note: string; icon: IconName; soon?: bo
   { to: '/historique', label: 'Historique', note: 'classements depuis 2014-15', icon: 'history' },
   { to: '/bareme', label: 'Calcul des points', note: 'barème du jeu', icon: 'info' },
 ];
-const MORE_PATHS = /^\/(equipes|club|historique|bareme)/;
-const PLUS = TABS.length;
 
 /**
  * Barre d'onglets réduite (icônes seules) quand on fait défiler vers le bas, pleine dès qu'on remonte :
@@ -58,7 +56,8 @@ function useEdgeSwipeBack() {
   const navigate = useNavigate();
   useEffect(() => {
     let start: { x: number; y: number } | null = null;
-    const down = (e: TouchEvent) => { const t = e.touches[0]; start = t.clientX < 24 ? { x: t.clientX, y: t.clientY } : null; };
+    // Pas depuis la barre d'onglets : y glisser sert à changer d'onglet.
+    const down = (e: TouchEvent) => { const t = e.touches[0]; start = t.clientX < 24 && !(e.target as Element).closest?.('.tabbar') ? { x: t.clientX, y: t.clientY } : null; };
     const up = (e: TouchEvent) => {
       if (!start) return;
       const t = e.changedTouches[0];
@@ -96,12 +95,42 @@ function Layout() {
   const [path, setPath] = useState(loc.pathname + loc.search);
   if (path !== loc.pathname + loc.search) { setPath(loc.pathname + loc.search); setMore(false); setSearch(false); }
 
-  const active = MORE_PATHS.test(loc.pathname) || more ? PLUS : Math.max(0, TABS.findIndex(t => t.match.test(loc.pathname)));
-  // Onglets de largeurs différentes (« Classement » est plus long que « Plus ») : la pastille suit l'onglet actif.
+  // Onglet de la page (aucun sur les pages du menu : équipes, fiches club, historique, barème).
+  const active = TABS.findIndex(t => t.match.test(loc.pathname));
+  const navigate = useNavigate();
   const bar = useRef<HTMLElement>(null);
+  // Glisser le doigt sur la barre : la pastille suit le doigt, on ouvre l'onglet où on le lève.
+  const [hover, setHover] = useState<number | null>(null);
+  const drag = useRef<{ x: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  const shown = hover ?? active;
+  const tabAt = (x: number) => {
+    const els = [...(bar.current?.querySelectorAll<HTMLElement>('.tb') ?? [])];
+    const dist = els.map(el => { const r = el.getBoundingClientRect(); return x < r.left ? r.left - x : x > r.right ? x - r.right : 0; });
+    return dist.indexOf(Math.min(...dist));
+  };
+  const onDown = (e: React.PointerEvent) => { drag.current = { x: e.clientX, moved: false }; };
+  const onMove = (e: React.PointerEvent) => {
+    const g = drag.current;
+    if (!g) return;
+    if (!g.moved && Math.abs(e.clientX - g.x) > 8) { g.moved = true; bar.current?.setPointerCapture(e.pointerId); }
+    if (g.moved) setHover(tabAt(e.clientX));
+  };
+  const onUp = () => {
+    const g = drag.current;
+    drag.current = null;
+    if (!g?.moved) return;
+    // Le « clic » qui suit la fin du glissement ne doit pas ouvrir l'onglet de départ.
+    suppressClick.current = true;
+    setTimeout(() => { suppressClick.current = false; }, 0);
+    if (hover != null && hover !== active) navigate(TABS[hover].to);
+    setHover(null);
+  };
+  // Onglets de largeurs différentes (« Classement » est plus long qu'« Accueil ») : la pastille suit l'onglet.
   useLayoutEffect(() => {
     const place = () => {
-      const el = bar.current?.querySelectorAll<HTMLElement>('.tb')[active];
+      const el = shown >= 0 ? bar.current?.querySelectorAll<HTMLElement>('.tb')[shown] : undefined;
+      bar.current?.style.setProperty('--lo', el ? '1' : '0');
       if (el) { bar.current!.style.setProperty('--lx', `${el.offsetLeft}px`); bar.current!.style.setProperty('--lw', `${el.offsetWidth}px`); }
     };
     place();
@@ -109,10 +138,10 @@ function Layout() {
     const t = setTimeout(place, 320);
     window.addEventListener('resize', place);
     return () => { clearTimeout(t); window.removeEventListener('resize', place); };
-  }, [active, compact]);
+  }, [shown, compact]);
 
   return (
-    <UiCtx.Provider value={{ openSearch: () => setSearch(true) }}>
+    <UiCtx.Provider value={{ openSearch: () => setSearch(true), openMore: () => setMore(true) }}>
       <header className="topbar">
         <div className="wrap topbar-in">
           <NavLink to="/" className="brand" aria-label="SearchL1, accueil"><Logo size={30} /><span>Search<b>L1</b></span></NavLink>
@@ -126,18 +155,16 @@ function Layout() {
       <main className="wrap main"><Outlet /></main>
 
       <div className={`dock${compact ? ' compact' : ''}`}>
-        <nav ref={bar} className="tabbar glass" aria-label="Navigation">
+        <nav ref={bar} className={`tabbar glass${hover != null ? ' dragging' : ''}`} aria-label="Navigation"
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null; setHover(null); }}
+          onClickCapture={e => { if (suppressClick.current) { e.preventDefault(); e.stopPropagation(); } }}>
           <span className="tab-lens" aria-hidden="true" />
           {TABS.map((t, i) => (
-            <NavLink key={t.to} to={t.to} className={`tb${active === i ? ' active' : ''}`} aria-current={active === i ? 'page' : undefined}>
+            <NavLink key={t.to} to={t.to} draggable={false} className={() => `tb${shown === i ? ' active' : ''}`} aria-current={active === i ? 'page' : undefined}>
               <Icon name={t.icon} /><span>{t.label}</span>
             </NavLink>
           ))}
-          <button className={`tb${active === PLUS ? ' active' : ''}`} onClick={() => setMore(v => !v)} aria-expanded={more}>
-            <Icon name="more" /><span>Plus</span>
-          </button>
         </nav>
-        <button className="search-orb glass" onClick={() => setSearch(true)} aria-label="Rechercher"><Icon name="search" size={22} /></button>
       </div>
 
       {more && (
