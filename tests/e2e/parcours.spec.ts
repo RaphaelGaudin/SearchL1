@@ -1,4 +1,5 @@
 // Parcours principaux sur iPhone 13. Les captures vont dans screenshots/ (une par écran).
+import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 const shot = (page: Page, name: string) => page.screenshot({ path: `screenshots/${name}.png`, fullPage: true });
@@ -199,6 +200,43 @@ test('Barre du bas : glisser le doigt pour changer d\'onglet, un simple toucher 
   await bar.getByRole('link', { name: 'Classement' }).click();
   await expect(page).toHaveURL(/#\/classement/);
   await expect(bar.locator('.tb.active')).toHaveText('Classement');
+});
+
+test('Comparer deux joueurs depuis une fiche, départs et palmarès', async ({ page }) => {
+  const palm = JSON.parse(fs.readFileSync('public/data/palmares.json', 'utf8'));
+  const season = JSON.parse(fs.readFileSync('public/data/season.json', 'utf8'));
+  const byGoals = [...season.players].sort((x: { logs: { g: number }[] }, y: { logs: { g: number }[] }) =>
+    y.logs.reduce((s, L) => s + L.g, 0) - x.logs.reduce((s, L) => s + L.g, 0));
+  const [a, b] = byGoals.filter((p: { id: number }) => !palm.moves?.[p.id]);
+  await page.goto(`/#/joueur/${a.id}`);
+  await page.getByRole('link', { name: /^Comparer/ }).click();
+  // Le choix du second joueur s'ouvre tout seul.
+  const pick = page.getByRole('dialog', { name: 'Choisir un joueur' });
+  await expect(pick).toBeVisible();
+  await pick.getByRole('searchbox').fill(b.n.split(' ').at(-1));
+  await pick.getByRole('button', { name: new RegExp(b.n.split(' ').at(-1)) }).first().click();
+  await expect(page).toHaveURL(new RegExp(`a=${a.id}.*b=${b.id}`));
+  await expect(page.locator('.cmp-head')).toHaveCount(2);
+  await expect(page.locator('.cmp-stat')).not.toHaveCount(0);
+  // Buts : le meilleur des deux est en gras.
+  const goals = page.locator('.cmp-stat', { hasText: 'Buts' }).first();
+  await expect(goals.locator('.strong')).toHaveCount(1);
+  await page.getByRole('button', { name: '5 dernières J' }).click();
+  await expect(page.getByRole('button', { name: '5 dernières J' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.duo svg path')).toHaveCount(2);
+  await noHorizontalOverflow(page);
+  await shot(page, '13-comparer');
+
+  // Un joueur parti en cours de saison n'est plus dans l'effectif de son club, mais dans « Partis ».
+  const goneId = Object.keys(palm.moves ?? {})[0];
+  test.skip(!goneId, 'aucun départ connu');
+  const gone = season.players.find((p: { id: number }) => String(p.id) === goneId);
+  await page.goto(`/#/club/${encodeURIComponent(gone.club)}?t=effectif`);
+  const departed = page.locator('.day', { has: page.getByRole('heading', { name: 'Partis en cours de saison' }) });
+  await expect(departed.getByText(gone.n, { exact: true })).toBeVisible();
+  await expect(page.locator('.day', { hasNot: page.getByRole('heading', { name: 'Partis en cours de saison' }) }).getByText(gone.n, { exact: true })).toHaveCount(0);
+  await page.goto(`/#/joueur/${goneId}`);
+  await expect(page.getByText(`A quitté ${gone.club}`)).toBeVisible();
 });
 
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {

@@ -282,7 +282,7 @@ function KeyPlayers({ m }: { m: Match }) {
 }
 
 function ClubPlayers({ d, club, showAbs }: { d: Data; club: string; showAbs: boolean }) {
-  const key = d.players.filter(p => p.club === club && p.starts >= 2 && !p.absence).sort((a, b) => (b.ptsAvg ?? 0) - (a.ptsAvg ?? 0)).slice(0, 3);
+  const key = d.players.filter(p => p.club === club && p.starts >= 2 && !p.absence && !p.left).sort((a, b) => (b.ptsAvg ?? 0) - (a.ptsAvg ?? 0)).slice(0, 3);
   const abs = showAbs ? (d.absByClub.get(club) ?? []) : [];
   return (
     <div className="day">

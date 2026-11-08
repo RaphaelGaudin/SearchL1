@@ -40,13 +40,13 @@ export function Home() {
   const top = (list: PlayerStats[], key: (p: PlayerStats) => number | null, n = 5) =>
     list.filter(p => key(p) != null).sort((a, b) => key(b)! - key(a)!).slice(0, n);
   const lists: Record<Watch, { p: PlayerStats; v: number | null; sub?: string; trend?: boolean }[]> = {
-    forme: top(d.players.filter(p => p.l3Apps >= 2 && p.trend != null && !p.absence), p => p.l3Avg).map(p => ({ p, v: p.l3Avg, trend: true })),
+    forme: top(d.players.filter(p => p.l3Apps >= 2 && p.trend != null && !p.absence && !p.left), p => p.l3Avg).map(p => ({ p, v: p.l3Avg, trend: true })),
     supersubs: top(d.players.filter(p => p.superSub && !p.absence), p => p.subAvg).map(p => ({ p, v: p.subAvg, sub: `${POSITION[p.pos]} · ${p.club} · ${p.recentSubs} entrée${p.recentSubs > 1 ? 's' : ''}, ${p.recentStarts} tit. sur 5 j.` })),
-    gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
-    defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
+    gardiens: top(d.players.filter(p => p.pos === 'G' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
+    defenseurs: top(d.players.filter(p => p.pos === 'D' && p.starts >= minApps && !p.left), p => p.ptsAvg).map(p => ({ p, v: p.ptsAvg, sub: `${p.club} · ${p.starts} tit.` })),
   };
   const W = WATCH.find(w => w.k === watch)!;
-  const absent = d.players.filter(p => p.absence && p.starts >= 2).sort((a, b) => importance(b) - importance(a));
+  const absent = d.players.filter(p => p.absence && p.starts >= 2 && !p.left).sort((a, b) => importance(b) - importance(a));
 
   const favPlayers = fav.players.map(id => d.playerById.get(id)).filter((p): p is PlayerStats => !!p);
   const nextOf = (club: string) => d.matches.find(m => m.status !== 'finished' && (m.h === club || m.a === club));

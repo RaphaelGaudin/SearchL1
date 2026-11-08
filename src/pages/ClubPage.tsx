@@ -8,7 +8,7 @@ import { MatchRow } from '../components/MatchRow.tsx';
 import { Card, Chip, Empty, Form, Group, Row, Section, SubNav, useTab } from '../components/ui.tsx';
 import { CLUBS, clubByName } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
-import { num, POSITION } from '../lib/format.ts';
+import { monthYear, num, POSITION } from '../lib/format.ts';
 import { buildTable } from '../lib/standings.ts';
 import { returnLabel } from './Injuries.tsx';
 import { ClubSeason, CupRow, type When } from './Matches.tsx';
@@ -58,7 +58,8 @@ export function ClubPage() {
   const home = buildTable(played, 'h').find(r => r.club === club);
   const away = buildTable(played, 'a').find(r => r.club === club);
   const cs = played.filter(m => (m.h === club && m.ag === 0) || (m.a === club && m.hg === 0)).length;
-  const squad = d.players.filter(p => p.club === club);
+  const squad = d.players.filter(p => p.club === club && !p.left);
+  const gone = d.players.filter(p => p.club === club && p.left);
   const abs = d.absByClub.get(club) ?? [];
   const cups = d.cupsByClub.get(club) ?? [];
   const hist = d.finals.map(f => ({ s: f.s, r: f.table.find(r => r.club === club), n: f.table.length }));
@@ -159,6 +160,14 @@ export function ClubPage() {
               </div>
             );
           })}
+          {gone.length > 0 && (
+            <div className="day">
+              <h3 className="dayhead">Partis en cours de saison</h3>
+              <Group>
+                {gone.map(p => <PlayerRow key={p.id} p={p} value={num(p.ptsAvg)} sub={`${p.left!.team ? `à ${p.left!.team}` : 'sans club'}${p.left!.since ? ` depuis ${monthYear(p.left!.since)}` : ''} · ${p.apps} match${p.apps > 1 ? 's' : ''} avec ${club}`} />)}
+              </Group>
+            </div>
+          )}
         </Section>
       )}
 

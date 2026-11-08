@@ -698,3 +698,16 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .theme-row .seg button { min-height: 36px; padding: 0 11px; }
 @keyframes menu-in { from { opacity: 0; transform: scale(.88) translateY(-8px); } }
 @media (prefers-reduced-motion: reduce) { .menu-pop { animation: none; } }
+
+/* ---------- comparer deux joueurs ---------- */
+.cmp-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cmp-head { justify-items: center; gap: 4px; padding: 16px 10px 12px; text-align: center; min-width: 0; color: var(--ink); font: inherit; }
+.cmp-head > * { max-width: 100%; }
+.cmp-change { color: var(--accent-ink); font-weight: 600; }
+.cmp-plus { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--surface-2); color: var(--muted); }
+.cmp-stat { display: grid; gap: 6px; padding: 10px 14px; }
+.cmp-stat + .cmp-stat { border-top: 1px solid var(--line); }
+.cmp-line { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.cmp-line .small { text-align: center; color: var(--muted); }
+.cmp-bar { display: flex; gap: 2px; height: 6px; }
+.cmp-bar i { border-radius: 3px; min-width: 2px; }

@@ -72,10 +72,13 @@ export interface Player {
 /** Palmarès : titres par joueur (TheSportsDB) et par club (Wikidata). */
 export interface Honour { title: string; season: string; team?: string }
 export interface ClubTitle { comp: string; seasons: string[] }
+/** Joueur parti de son club de L1 (club actuel d'après Wikidata ; null : sans club connu). */
+export interface Move { team: string | null; since?: string }
 export interface PalmaresFile {
   updatedAt: string;
   players: Record<string, Honour[]>;
   clubs: Record<string, ClubTitle[]>;
+  moves?: Record<string, Move>;
 }
 
 export interface Absence {

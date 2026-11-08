@@ -4,7 +4,7 @@ import { dayGap, parisDay } from './format.ts';
 import { dayNum, fit, predict, type Context, type Fit, type H2hMatch, type ModelMatch, type Prediction } from './predict.ts';
 import { matchPoints, type MatchPoints } from './scoring.ts';
 import { buildTable, type TableRow } from './standings.ts';
-import type { Absence, CupMatch, HistoryFile, Match, MetaFile, PalmaresFile, Player, PlayerLog, SeasonFile } from './types.ts';
+import type { Absence, CupMatch, HistoryFile, Match, MetaFile, Move, PalmaresFile, Player, PlayerLog, SeasonFile } from './types.ts';
 
 export interface ScoredLog extends PlayerLog { P: MatchPoints }
 
@@ -47,6 +47,8 @@ export interface PlayerStats extends Omit<Player, 'logs'> {
   /** Bon supersub (voir isSuperSub). */
   superSub: boolean;
   absence: Absence | null;
+  /** Parti de son club de L1 en cours de saison (d'après Wikidata) : plus dans l'effectif ni dans les conseils. */
+  left: Move | null;
 }
 
 export interface Meeting { s: string; d: string; h: string; a: string; hg: number; ag: number; j: number }
@@ -115,8 +117,9 @@ export function buildData(meta: MetaFile, season: SeasonFile, history: HistoryFi
       trend: ptsAvg != null && l3Avg != null && l3.length >= 2 && full.length > l3.length ? l3Avg - ptsAvg : null,
       subAvg: avg(sub), subApps: sub.length,
       recentSubs: rSubs, recentStarts: rStarts,
-      superSub: isSuperSub(recent, avg(sub), sub.length),
+      superSub: !palmares?.moves?.[p.id] && isSuperSub(recent, avg(sub), sub.length),
       absence: absences.find(a => a.playerId === p.id) ?? null,
+      left: palmares?.moves?.[p.id] ?? null,
     };
   });
   const playerById = new Map(players.map(p => [p.id, p]));

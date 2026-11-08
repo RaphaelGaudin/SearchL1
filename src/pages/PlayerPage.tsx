@@ -9,7 +9,7 @@ import { PointsDetail } from '../components/PointsDetail.tsx';
 import { PositionCompare } from '../components/PositionCompare.tsx';
 import { Card, Chip, Empty, Estimate, Group, Section, SubNav, useTab } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
-import { dayShort, num, POSITION, signed, time } from '../lib/format.ts';
+import { dayShort, monthYear, num, POSITION, signed, time } from '../lib/format.ts';
 import { windowStats } from '../lib/model.ts';
 
 const ABS = { B: ['down', 'Blessé'], S: ['down', 'Suspendu'], D: ['warn', 'Incertain'], C: ['neutral', 'Non retenu'] } as const;
@@ -45,7 +45,10 @@ export function PlayerPage() {
 
   return (
     <div className="page">
-      <NavBar title={p.n} back="Retour" fallback="/joueurs" right={<FavButton kind="player" id={p.id} label={p.n} />} />
+      <NavBar title={p.n} back="Retour" fallback="/joueurs" right={<>
+        <Link to={`/comparer?a=${p.id}`} className="glass-btn" aria-label={`Comparer ${p.n} à un autre joueur`}><CompareIcon /></Link>
+        <FavButton kind="player" id={p.id} label={p.n} />
+      </>} />
 
       <header className="entity-head">
         <Avatar name={p.n} club={p.club} id={p.id} size={72} />
@@ -55,6 +58,7 @@ export function PlayerPage() {
           <PlayerProfile p={p} />
           <div className="chips-inline">
             {p.superSub && <Chip tone="accent"><SuperSubBadge small subAvg={p.subAvg} /> Bon supersub · {num(p.subAvg)} pts/entrée · {p.recentSubs} entrées sur 5 j.</Chip>}
+            {p.left && <Chip tone="neutral">A quitté {p.club}{p.left.team ? ` · ${p.left.team}` : ''}{p.left.since ? ` depuis ${monthYear(p.left.since)}` : ''}</Chip>}
             {p.absence && <Chip tone={ABS[p.absence.type][0]}>{ABS[p.absence.type][1]} · {p.absence.why}</Chip>}
           </div>
         </div>
@@ -173,5 +177,14 @@ export function PlayerPage() {
         </Section>
       )}
     </div>
+  );
+}
+
+/** Deux flèches opposées : comparer. */
+function CompareIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 4 3 8l4 4M3 8h13M17 12l4 4-4 4M21 16H8" />
+    </svg>
   );
 }

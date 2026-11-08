@@ -16,6 +16,7 @@ export const time = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', {
 export const dayLong = (iso: string) => cap(new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ }));
 export const dayShort = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ });
 export const dateShort = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: TZ });
+export const monthYear = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric', timeZone: TZ });
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Écart en jours (calendrier parisien) de a vers b. */

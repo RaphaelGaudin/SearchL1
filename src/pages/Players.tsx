@@ -86,7 +86,7 @@ export function Players() {
         w.apps > 0 && (pos === 'all' || p.pos === pos) && (club === 'all' || p.club === club) &&
         (view === 'supersubs' ? w.subs > 0 : w.min >= minMin || (view === 'discipline' && w.y + w.rc > 0)) &&
         (role === 'all' || (role === 'tit' ? w.starts >= w.subs : w.subs > w.starts)) &&
-        (only !== 'dispo' || !p.absence) && (only !== 'ss' || p.superSub) && (only !== 'fav' || fav.isPlayer(p.id)) &&
+        (only !== 'dispo' || (!p.absence && !p.left)) && (only !== 'ss' || p.superSub) && (only !== 'fav' || fav.isPlayer(p.id)) &&
         (!s || norm(`${p.n} ${p.club}`).includes(s)))
       .sort((a, b) => (S[sort].v(b.s, b.p) ?? -Infinity) - (S[sort].v(a.s, a.p) ?? -Infinity));
   }, [d, period, pos, club, role, minSel, only, sort, q, view, fav]);
