@@ -79,13 +79,20 @@ export interface SfEvent {
 export interface SfLineupPlayer {
   player: { id: number; name: string; shortName?: string; position?: string; dateOfBirthTimestamp?: number; country?: { alpha2?: string }; height?: number };
   position?: string;
+  shirtNumber?: number;
   substitute: boolean;
   statistics?: Record<string, number | undefined>;
 }
+export interface SfLineupSide {
+  players: SfLineupPlayer[];
+  missingPlayers?: SfMissing[];
+  formation?: string;
+  playerColor?: { primary?: string; number?: string };
+}
 export interface SfLineups {
   confirmed: boolean;
-  home: { players: SfLineupPlayer[]; missingPlayers?: SfMissing[] };
-  away: { players: SfLineupPlayer[]; missingPlayers?: SfMissing[] };
+  home: SfLineupSide;
+  away: SfLineupSide;
 }
 export interface SfMissing {
   player: { id: number; name: string; shortName?: string };
@@ -102,4 +109,6 @@ export interface SfIncident {
   isHome?: boolean;
   player?: { id: number; name: string; shortName?: string };
   assist1?: { id: number; name: string; shortName?: string };
+  playerIn?: { id: number; name: string; shortName?: string };
+  playerOut?: { id: number; name: string; shortName?: string };
 }

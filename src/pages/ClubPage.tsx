@@ -1,23 +1,30 @@
-import { useLayoutEffect, useRef } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { FavButton, NavBar } from '../components/Glass.tsx';
 import { ClubPalmares } from '../components/Palmares.tsx';
 import { PlayerRow } from '../components/PlayerRow.tsx';
-import { Card, Chip, Empty, Form, Group, Row, Section, SubNav } from '../components/ui.tsx';
+import { MatchRow } from '../components/MatchRow.tsx';
+import { Card, Chip, Empty, Form, Group, Row, Section, SubNav, useTab } from '../components/ui.tsx';
 import { CLUBS, clubByName } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
-import { dayShort, num, POSITION, time } from '../lib/format.ts';
+import { num, POSITION } from '../lib/format.ts';
 import { buildTable } from '../lib/standings.ts';
 import { returnLabel } from './Injuries.tsx';
-import { ClubSeason, CupRow } from './Matches.tsx';
+import { ClubSeason, CupRow, type When } from './Matches.tsx';
 
 const ABS = { B: ['down', 'Blessé'], S: ['down', 'Suspendu'], D: ['warn', 'Incertain'], C: ['neutral', 'Non retenu'] } as const;
 
 /** Barre de clubs défilante : changer de club en un geste, le club affiché reste au centre. */
-export function ClubRail({ current, to = c => `/club/${encodeURIComponent(c)}` }: { current: string; to?: (c: string) => string }) {
+export function ClubRail({ current, to }: { current: string; to?: (c: string) => string }) {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  // Sur la fiche club, on garde l'onglet ouvert (?t=…) en passant d'un club à l'autre. Lu dans l'adresse au moment
+  // du toucher : le rendu qui suit un changement d'onglet peut ne pas être encore fait.
+  to ??= c => {
+    const t = new URLSearchParams(window.location.hash.split('?')[1]).get('t');
+    return `/club/${encodeURIComponent(c)}${t ? `?t=${t}` : ''}`;
+  };
   useLayoutEffect(() => {
     const el = ref.current?.querySelector<HTMLElement>('[aria-current="true"]');
     if (el && ref.current) ref.current.scrollLeft = el.offsetLeft - ref.current.clientWidth / 2 + el.clientWidth / 2;
@@ -34,10 +41,15 @@ export function ClubRail({ current, to = c => `/club/${encodeURIComponent(c)}` }
   );
 }
 
+const TABS: [string, string][] = [['resume', 'Résumé'], ['calendrier', 'Calendrier'], ['effectif', 'Effectif'], ['coupes', 'Coupes'], ['infirmerie', 'Infirmerie'], ['palmares', 'Palmarès'], ['historique', 'Historique']];
+const WHEN: [When, string][] = [['next', 'À venir'], ['past', 'Résultats'], ['all', 'Toute la saison']];
+
 export function ClubPage() {
   const { name = '' } = useParams();
   const club = decodeURIComponent(name);
   const d = useData();
+  const [tab, setTab] = useTab(TABS);
+  const [when, setWhen] = useState<When>('next');
   const info = clubByName.get(club);
   if (!info) return <div className="page"><NavBar title="Club" back="Équipes" fallback="/equipes" /><Empty>Club introuvable.</Empty></div>;
 
@@ -46,11 +58,16 @@ export function ClubPage() {
   const home = buildTable(played, 'h').find(r => r.club === club);
   const away = buildTable(played, 'a').find(r => r.club === club);
   const cs = played.filter(m => (m.h === club && m.ag === 0) || (m.a === club && m.hg === 0)).length;
-  const next = d.matches.find(m => m.status !== 'finished' && (m.h === club || m.a === club));
   const squad = d.players.filter(p => p.club === club);
   const abs = d.absByClub.get(club) ?? [];
   const cups = d.cupsByClub.get(club) ?? [];
   const hist = d.finals.map(f => ({ s: f.s, r: f.table.find(r => r.club === club), n: f.table.length }));
+  const mine = d.matches.filter(m => m.h === club || m.a === club);
+  const last5 = mine.filter(m => m.status === 'finished').slice(-3).reverse();
+  const coming = mine.filter(m => m.status === 'notstarted').slice(0, 2);
+  const nextCup = cups.find(c => c.gf == null && !c.tbd);
+  const best = squad.filter(p => p.starts >= 2 && !p.absence).sort((a, b) => (b.ptsAvg ?? -99) - (a.ptsAvg ?? -99)).slice(0, 3);
+  const tabs = TABS.map(([k, l]): [string, string] => [k, k === 'infirmerie' && abs.length ? `${l} · ${abs.length}` : l]);
 
   return (
     <div className="page">
@@ -66,89 +83,128 @@ export function ClubPage() {
         </div>
       </header>
 
-      <SubNav items={[['resume', 'Résumé'], ['calendrier', 'Calendrier'], ['effectif', 'Effectif'], ['coupes', 'Coupes'], ['infirmerie', 'Infirmerie'], ['palmares', 'Palmarès'], ['historique', 'Historique']]} />
+      <SubNav items={tabs} value={tab} onChange={setTab} />
 
-      <Section title="Résumé" meta={`après J${d.lastRound}`} id="resume">
-        <div className="tiles">
-          <div className="tile"><b className="num-lg accent">{row.rank}<small>{row.rank === 1 ? 'er' : 'e'}</small></b><span className="small muted">classement</span></div>
-          <div className="tile"><b className="num-lg">{row.pts}</b><span className="small muted">{row.w} V · {row.d} N · {row.l} D</span></div>
-          <div className="tile"><b className="num-lg">{row.gd > 0 ? '+' : ''}{row.gd}</b><span className="small muted">{row.gf} BP · {row.ga} BC</span></div>
-          <div className="tile"><b className="num-lg">{cs}</b><span className="small muted">clean sheets</span></div>
-          <div className="tile"><b className="num-lg">{home?.pts ?? 0}</b><span className="small muted">pts à domicile</span></div>
-          <div className="tile"><b className="num-lg">{away?.pts ?? 0}</b><span className="small muted">pts à l'extérieur</span></div>
-        </div>
-        {next && (
+      {tab === 'resume' && (
+        <Section title="Résumé" meta={`après J${d.lastRound}`} id="resume">
+          <div className="tiles">
+            <div className="tile"><b className="num-lg accent">{row.rank}<small>{row.rank === 1 ? 'er' : 'e'}</small></b><span className="small muted">classement</span></div>
+            <div className="tile"><b className="num-lg">{row.pts}</b><span className="small muted">{row.w} V · {row.d} N · {row.l} D</span></div>
+            <div className="tile"><b className="num-lg">{row.gd > 0 ? '+' : ''}{row.gd}</b><span className="small muted">{row.gf} BP · {row.ga} BC</span></div>
+            <div className="tile"><b className="num-lg">{cs}</b><span className="small muted">clean sheets</span></div>
+            <div className="tile"><b className="num-lg">{home?.pts ?? 0}</b><span className="small muted">pts à domicile</span></div>
+            <div className="tile"><b className="num-lg">{away?.pts ?? 0}</b><span className="small muted">pts à l'extérieur</span></div>
+          </div>
+        </Section>
+      )}
+      {tab === 'resume' && (
+        <Section title="Derniers résultats" meta="L1">
           <Group>
-            <Row to={`/match/${next.id}`}>
-              <span className="small muted">Prochain</span>
-              <Crest club={next.h === club ? next.a : next.h} size={22} />
-              <span className="grow strong ellipsis">{next.h === club ? 'vs' : 'à'} {next.h === club ? next.a : next.h}</span>
-              <span className="small muted">{dayShort(next.d)} {time(next.d)}</span>
-            </Row>
+            {last5.map(m => <MatchRow key={m.id} m={m} showDate />)}
+            {!last5.length && <Empty>Pas encore de match joué.</Empty>}
           </Group>
-        )}
-      </Section>
+          <button type="button" className="textlink" onClick={() => { setWhen('past'); setTab('calendrier'); }}>Tous les résultats ›</button>
+        </Section>
+      )}
+      {tab === 'resume' && (
+        <Section title="À venir" meta={nextCup ? 'L1 et coupes' : 'L1'}>
+          <Group>
+            {[...coming.map(m => ({ d: m.d, el: <MatchRow key={m.id} m={m} showDate /> })),
+              ...(nextCup ? [{ d: nextCup.d, el: <CupRow key="cup" c={nextCup} /> }] : [])]
+              .sort((a, b) => a.d.localeCompare(b.d)).map(x => x.el)}
+            {!coming.length && !nextCup && <Empty>Plus de match à venir.</Empty>}
+          </Group>
+          <button type="button" className="textlink" onClick={() => { setWhen('next'); setTab('calendrier'); }}>Tout le calendrier ›</button>
+        </Section>
+      )}
+      {tab === 'resume' && (
+        <Section title="Joueurs clés" meta="pts/match">
+          <Group>
+            {best.map(p => <PlayerRow key={p.id} p={p} value={num(p.ptsAvg)} sub={`${POSITION[p.pos]} · ${p.starts} tit. · ${p.g} but${p.g > 1 ? 's' : ''} · ${p.a} passe${p.a > 1 ? 's' : ''}`} />)}
+            <button type="button" className="row link" onClick={() => setTab('infirmerie')}>
+              <span className="grow ellipsis">{abs.length ? `${abs.length} absent${abs.length > 1 ? 's' : ''} annoncé${abs.length > 1 ? 's' : ''}` : 'Aucun absent annoncé'}
+                {abs.length > 0 && <small className="muted block ellipsis">{abs.map(a => (a.playerId != null ? d.playerById.get(a.playerId)?.n : null) ?? a.player).join(', ')}</small>}</span>
+              <span className="small muted nowrap">Infirmerie ›</span>
+            </button>
+          </Group>
+          <button type="button" className="textlink" onClick={() => setTab('effectif')}>Tout l'effectif ›</button>
+        </Section>
+      )}
 
-      <Section title="Calendrier" meta="L1 et coupes" id="calendrier">
-        <ClubSeason club={club} autoScroll={false} title={false} />
-      </Section>
+      {tab === 'calendrier' && (
+        <Section title="Calendrier" meta="L1 et coupes" id="calendrier">
+          <div className="chips-row" role="group" aria-label="Période">
+            {WHEN.map(([k, l]) => <button key={k} type="button" className={`toggle${when === k ? ' on' : ''}`} aria-pressed={when === k} onClick={() => setWhen(k)}>{l}</button>)}
+          </div>
+          <ClubSeason club={club} autoScroll={false} title={false} when={when} />
+        </Section>
+      )}
 
-      <Section title="Effectif" meta="pts/match" id="effectif">
-        {(['G', 'D', 'M', 'A'] as const).map(pos => {
-          const list = squad.filter(p => p.pos === pos && p.apps > 0).sort((a, b) => (b.ptsAvg ?? -99) - (a.ptsAvg ?? -99));
-          const unused = squad.filter(p => p.pos === pos && p.apps === 0);
-          if (!list.length && !unused.length) return null;
-          return (
-            <div key={pos} className="day">
-              <h3 className="dayhead">{POSITION[pos]}s</h3>
-              <Group>
-                {list.map(p => (
-                  <PlayerRow key={p.id} p={p} value={num(p.ptsAvg)}
-                    sub={`${p.starts} tit.${p.subs ? ` · ${p.subs} entr.` : ''} · ${p.g} but${p.g > 1 ? 's' : ''} · ${p.a} passe${p.a > 1 ? 's' : ''}${p.absence ? ` · ${ABS[p.absence.type][1].toLowerCase()}` : ''}`} />
-                ))}
-                {unused.length > 0 && <div className="row tight small muted">Sans minute jouée : {unused.map(p => p.n).join(', ')}</div>}
-              </Group>
-            </div>
-          );
-        })}
-      </Section>
-
-      <Section title="Coupes" meta="Europe et Coupe de France" id="coupes">
-        <Group>{cups.length ? cups.map(c => <CupRow key={c.d + c.comp} c={c} />) : <Empty>Pas de coupe en cours.</Empty>}</Group>
-      </Section>
-
-      <Section title="Infirmerie" meta={d.nextRound ? `J${d.nextRound}` : undefined} id="infirmerie">
-        <Group>
-          {abs.map(a => {
-            const p = a.playerId != null ? d.playerById.get(a.playerId) : undefined;
+      {tab === 'effectif' && (
+        <Section title="Effectif" meta="pts/match" id="effectif">
+          {(['G', 'D', 'M', 'A'] as const).map(pos => {
+            const list = squad.filter(p => p.pos === pos && p.apps > 0).sort((a, b) => (b.ptsAvg ?? -99) - (a.ptsAvg ?? -99));
+            const unused = squad.filter(p => p.pos === pos && p.apps === 0);
+            if (!list.length && !unused.length) return null;
             return (
-              <Row key={a.player} to={p ? `/joueur/${p.id}` : undefined}>
-                <span className="grow ellipsis"><span className="strong">{p?.n ?? a.player}</span>
-                  <small className="muted block">{a.why}{returnLabel(a) ? ` · ${returnLabel(a)}` : ''}{p ? ` · ${p.starts} tit. · ${num(p.ptsAvg)} pts/match` : ''}</small></span>
-                <Chip tone={ABS[a.type][0]}>{ABS[a.type][1]}</Chip>
-              </Row>
+              <div key={pos} className="day">
+                <h3 className="dayhead">{POSITION[pos]}s</h3>
+                <Group>
+                  {list.map(p => (
+                    <PlayerRow key={p.id} p={p} value={num(p.ptsAvg)}
+                      sub={`${p.starts} tit.${p.subs ? ` · ${p.subs} entr.` : ''} · ${p.g} but${p.g > 1 ? 's' : ''} · ${p.a} passe${p.a > 1 ? 's' : ''}${p.absence ? ` · ${ABS[p.absence.type][1].toLowerCase()}` : ''}`} />
+                  ))}
+                  {unused.length > 0 && <div className="row tight small muted">Sans minute jouée : {unused.map(p => p.n).join(', ')}</div>}
+                </Group>
+              </div>
             );
           })}
-          {!abs.length && <Empty>Aucun absent annoncé.</Empty>}
-        </Group>
-      </Section>
+        </Section>
+      )}
 
-      <Section title="Palmarès" meta={d.palmares ? 'source Wikidata' : undefined} id="palmares">
-        <ClubPalmares titles={d.palmares?.clubs[club]} />
-      </Section>
+      {tab === 'coupes' && (
+        <Section title="Coupes" meta="Europe et Coupe de France" id="coupes">
+          <Group>{cups.length ? cups.map(c => <CupRow key={c.d + c.comp} c={c} />) : <Empty>Pas de coupe en cours.</Empty>}</Group>
+        </Section>
+      )}
 
-      <Section title="Historique" meta="classement final depuis 2014" id="historique">
-        <Card><RankChart hist={hist} /></Card>
-        <Group>
-          {[...hist].reverse().map(h => (
-            <div key={h.s} className="row tight">
-              <span className="grow">{h.s}</span>
-              {h.r ? <><span className="num-sm">{h.r.rank}{h.r.rank === 1 ? 'er' : 'e'}</span><span className="small muted pts-w">{h.r.pts} pts</span></> : <span className="small muted">pas en L1</span>}
-            </div>
-          ))}
-        </Group>
-      </Section>
-      <Link to={`/matchs?club=${encodeURIComponent(club)}`} className="textlink">Voir dans l'onglet Matchs ›</Link>
+      {tab === 'infirmerie' && (
+        <Section title="Infirmerie" meta={d.nextRound ? `J${d.nextRound}` : undefined} id="infirmerie">
+          <Group>
+            {abs.map(a => {
+              const p = a.playerId != null ? d.playerById.get(a.playerId) : undefined;
+              return (
+                <Row key={a.player} to={p ? `/joueur/${p.id}` : undefined}>
+                  <span className="grow ellipsis"><span className="strong">{p?.n ?? a.player}</span>
+                    <small className="muted block">{a.why}{returnLabel(a) ? ` · ${returnLabel(a)}` : ''}{p ? ` · ${p.starts} tit. · ${num(p.ptsAvg)} pts/match` : ''}</small></span>
+                  <Chip tone={ABS[a.type][0]}>{ABS[a.type][1]}</Chip>
+                </Row>
+              );
+            })}
+            {!abs.length && <Empty>Aucun absent annoncé.</Empty>}
+          </Group>
+        </Section>
+      )}
+
+      {tab === 'palmares' && (
+        <Section title="Palmarès" meta={d.palmares ? 'source Wikidata' : undefined} id="palmares">
+          <ClubPalmares titles={d.palmares?.clubs[club]} />
+        </Section>
+      )}
+
+      {tab === 'historique' && (
+        <Section title="Historique" meta="classement final depuis 2014" id="historique">
+          <Card><RankChart hist={hist} /></Card>
+          <Group>
+            {[...hist].reverse().map(h => (
+              <div key={h.s} className="row tight">
+                <span className="grow">{h.s}</span>
+                {h.r ? <><span className="num-sm">{h.r.rank}{h.r.rank === 1 ? 'er' : 'e'}</span><span className="small muted pts-w">{h.r.pts} pts</span></> : <span className="small muted">pas en L1</span>}
+              </div>
+            ))}
+          </Group>
+        </Section>
+      )}
     </div>
   );
 }

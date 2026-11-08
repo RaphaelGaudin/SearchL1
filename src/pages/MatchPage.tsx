@@ -1,11 +1,12 @@
 import { useMemo, useRef, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { NavBar } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
+import { MatchSheetView } from '../components/MatchSheet.tsx';
 import { Avatar, PlayerName } from '../components/PlayerRow.tsx';
 import { PointsDetail } from '../components/PointsDetail.tsx';
-import { Card, Chip, Empty, Estimate, Form, Group, ProbBar, Row, Section, SubNav, pcts, type Tone } from '../components/ui.tsx';
+import { Card, Chip, Empty, Estimate, Form, Group, ProbBar, Row, Section, SubNav, pcts, useTab, type Tone } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
 import { CUP_LONG, CUP_SHORT, dayShort, num, parisDay, POSITION, signed, time } from '../lib/format.ts';
 import type { Data, PlayerStats, ScoredLog } from '../lib/model.ts';
@@ -19,8 +20,14 @@ export function MatchPage() {
   const { id } = useParams();
   const d = useData();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const m = d.byId.get(Number(id));
   const played = m?.status === 'finished';
+  // Match joué : la feuille de match d'abord ; à venir : le pronostic.
+  const sections: [string, string][] = played
+    ? [['feuille', 'Feuille de match'], ['points', 'Points'], ['prono', 'Pronostic'], ['h2h', 'Face-à-face'], ['saison', 'Saison'], ['coupes', 'Coupes']]
+    : [['prono', 'Pronostic'], ['joueurs', 'Joueurs'], ['h2h', 'Face-à-face'], ['saison', 'Saison'], ['coupes', 'Coupes']];
+  const [tab, setTab] = useTab(sections);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const pred = useMemo(() => (m ? (played ? d.predictBefore(m) : d.predictions.get(m.id)) : undefined), [m, played, d]);
   if (!m) return <div className="page"><Empty>Match introuvable.</Empty></div>;
@@ -29,11 +36,7 @@ export function MatchPage() {
   const idx = round.findIndex(x => x.id === m.id);
   const prev = round[idx - 1], next = round[idx + 1];
 
-  const sections: [string, string][] = [
-    ['prono', 'Pronostic'],
-    ...(played ? [['points', 'Points'] as [string, string]] : []),
-    ['coupes', 'Coupes'], ['h2h', 'Face-à-face'], ['saison', 'Saison'], ['joueurs', 'Joueurs'],
-  ];
+  const go = (x: Match) => navigate(`/match/${x.id}${search}`, { replace: true });
 
   // Glisser à gauche / à droite (loin du bord gauche, réservé au retour) : match suivant / précédent.
   const swipe = (e: React.TouchEvent) => {
@@ -43,7 +46,7 @@ export function MatchPage() {
     const dx = t.clientX - t0.x, dy = t.clientY - t0.y;
     if (Math.abs(dx) > 90 && Math.abs(dy) < 40) {
       const target = dx < 0 ? next : prev;
-      if (target) navigate(`/match/${target.id}`, { replace: true });
+      if (target) go(target);
     }
   };
   return (
@@ -52,9 +55,9 @@ export function MatchPage() {
       onTouchEnd={swipe}>
       <NavBar title={`${m.h} – ${m.a}`} back="Matchs" fallback={`/matchs?j=${m.j}`} right={
         <span className="glass-group">
-          <button disabled={!prev} onClick={() => prev && navigate(`/match/${prev.id}`, { replace: true })} aria-label="Match précédent de la journée"><Icon name="left" size={18} /></button>
+          <button disabled={!prev} onClick={() => prev && go(prev)} aria-label="Match précédent de la journée"><Icon name="left" size={18} /></button>
           <span className="num-sm" aria-label={`Match ${idx + 1} sur ${round.length}`}>{idx + 1}/{round.length}</span>
-          <button disabled={!next} onClick={() => next && navigate(`/match/${next.id}`, { replace: true })} aria-label="Match suivant de la journée"><Icon name="right" size={18} /></button>
+          <button disabled={!next} onClick={() => next && go(next)} aria-label="Match suivant de la journée"><Icon name="right" size={18} /></button>
         </span>
       } />
 
@@ -74,21 +77,15 @@ export function MatchPage() {
         </div>
       )}
 
-      <SubNav items={sections} />
+      <SubNav items={sections} value={tab} onChange={setTab} />
 
-      <div className="cols">
-        <div>
-          {pred && <Pronostic m={m} p={pred} played={played} />}
-          {pred && <Factors m={m} p={pred} />}
-          {played && <MatchPoints m={m} />}
-        </div>
-        <div>
-          <Cups m={m} />
-          <HeadToHead m={m} />
-          <SeasonCompare m={m} />
-          <KeyPlayers m={m} />
-        </div>
-      </div>
+      {tab === 'feuille' && <MatchSheetView key={m.id} m={m} />}
+      {tab === 'points' && <MatchPoints m={m} />}
+      {tab === 'prono' && pred && <><Pronostic m={m} p={pred} played={played} /><Factors m={m} p={pred} /></>}
+      {tab === 'joueurs' && <KeyPlayers m={m} />}
+      {tab === 'h2h' && <HeadToHead m={m} />}
+      {tab === 'saison' && <SeasonCompare m={m} />}
+      {tab === 'coupes' && <Cups m={m} />}
     </div>
   );
 }

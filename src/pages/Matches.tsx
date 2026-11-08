@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { LargeTitle, NavBar } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { MatchRow } from '../components/MatchRow.tsx';
-import { Chip, Group, Row, type Tone } from '../components/ui.tsx';
+import { Chip, Empty, Group, Row, type Tone } from '../components/ui.tsx';
 import { CLUB_NAMES } from '../lib/clubs.ts';
 import { useData } from '../lib/data.tsx';
 import { CUP_LONG, CUP_SHORT, dateShort, dayLong, dayShort, parisDay, time } from '../lib/format.ts';
@@ -89,15 +89,22 @@ function Round({ j, onPick }: { j: number; onPick: (j: number) => void }) {
 
 type Item = { kind: 'l1'; d: string; m: Match } | { kind: 'cup'; d: string; c: CupMatch } | { kind: 'today'; d: string };
 
-export function ClubSeason({ club, autoScroll = true, title = true }: { club: string; autoScroll?: boolean; title?: boolean }) {
+/** Période affichée : matchs à venir, résultats (du plus récent au plus ancien) ou toute la saison. */
+export type When = 'next' | 'past' | 'all';
+
+export function ClubSeason({ club, autoScroll = true, title = true, when = 'all' }: { club: string; autoScroll?: boolean; title?: boolean; when?: When }) {
   const d = useData();
   const todayRef = useRef<HTMLDivElement>(null);
   const [now] = useState(() => new Date().toISOString());
-  const items: Item[] = [
+  // Un match est « joué » quand on a son score, pas seulement quand sa date est passée.
+  const done = (it: Item) => (it.kind === 'l1' ? it.m.status === 'finished' : it.kind === 'cup' ? it.c.gf != null || it.d < now : false);
+  let items: Item[] = [
     ...d.matches.filter(m => m.h === club || m.a === club).map(m => ({ kind: 'l1' as const, d: m.d, m })),
     ...(d.cupsByClub.get(club) ?? []).map(c => ({ kind: 'cup' as const, d: c.d, c })),
-    { kind: 'today' as const, d: now },
+    ...(when === 'all' ? [{ kind: 'today' as const, d: now }] : []),
   ].sort((a, b) => a.d.localeCompare(b.d));
+  if (when === 'next') items = items.filter(it => it.kind !== 'today' && !done(it));
+  if (when === 'past') items = items.filter(it => it.kind !== 'today' && done(it)).reverse();
 
   useEffect(() => { if (autoScroll) todayRef.current?.scrollIntoView({ block: 'center' }); }, [club, autoScroll]);
 
@@ -111,6 +118,7 @@ export function ClubSeason({ club, autoScroll = true, title = true }: { club: st
   return (
     <>
       {title && <div className="section-head"><h2>Saison de {club}</h2><Link to={`/club/${encodeURIComponent(club)}`} className="textlink small">Fiche club ›</Link></div>}
+      {!blocks.length && <Group><Empty>{when === 'past' ? 'Pas encore de match joué.' : 'Plus de match à venir.'}</Empty></Group>}
       {blocks.map((b, i) =>
         b[0].kind === 'today'
           ? <div key="today" ref={todayRef} className="today"><span>Aujourd'hui · {dayShort(now)}</span></div>

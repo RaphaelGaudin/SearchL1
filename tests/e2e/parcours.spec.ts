@@ -31,7 +31,8 @@ test('Matchs : bande de journées, flèches, probabilités qui somment à 100', 
   const current = page.locator('.rd.on .num-sm');
   const j = Number((await current.textContent())!.slice(1));
   await expect(page.getByRole('heading', { name: `Journée ${j}` })).toBeVisible();
-  const row = page.locator('.match-row').first();
+  // Premier match pas encore joué de la journée (les matchs joués n'ont plus de probabilités).
+  const row = page.locator('.match-row:has(.mr-probs)').first();
   const pcts = (await row.locator('.mr-probs').innerText()).match(/\d+/g)!.map(Number);
   expect(pcts.reduce((s, x) => s + x, 0)).toBe(100);
   await noHorizontalOverflow(page);
@@ -44,7 +45,7 @@ test('Matchs : bande de journées, flèches, probabilités qui somment à 100', 
   await expect(page.getByRole('heading', { name: `Journée ${j}` })).toBeVisible();
 });
 
-test('Fiche match à venir : pronostic expliqué, sommaire, retour à la même position', async ({ page }) => {
+test('Fiche match à venir : pronostic expliqué, onglets, retour à la même position', async ({ page }) => {
   await page.goto('/#/matchs');
   const rows = page.locator('.match-row');
   await rows.nth(5).scrollIntoViewIfNeeded();
@@ -57,16 +58,17 @@ test('Fiche match à venir : pronostic expliqué, sommaire, retour à la même p
   expect(tri.reduce((s, x) => s + x, 0)).toBe(100);
   await expect(page.getByText('Pronostic final')).toBeVisible();
   await expect(page.locator('.step')).toHaveCount(7);
-  for (const h of ['Coupes autour du match', 'Face-à-face', 'Comparatif de saison', 'Joueurs clés et absents']) {
-    await expect(page.getByRole('heading', { name: h })).toBeAttached();
-  }
   await noHorizontalOverflow(page);
   await shot(page, '3-fiche-match');
 
-  await page.locator('.subnav a', { hasText: 'Face-à-face' }).click();
-  await expect(page.getByRole('heading', { name: 'Face-à-face' })).toBeInViewport();
-  // Le sommaire reste collé en haut.
-  expect(await page.locator('.subnav').evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(60);
+  // Un onglet = un contenu ; l'onglet touché est celui qui est marqué.
+  const tabs = page.locator('.subnav');
+  for (const [t, h] of [['Joueurs', 'Joueurs clés et absents'], ['Saison', 'Comparatif de saison'], ['Coupes', 'Coupes autour du match'], ['Face-à-face', 'Face-à-face']]) {
+    await tabs.getByRole('tab', { name: t }).click();
+    await expect(page.getByRole('heading', { name: h })).toBeInViewport();
+    await expect(tabs.getByRole('tab', { selected: true })).toHaveText(t);
+  }
+  await expect(page.getByRole('heading', { name: 'Pronostic' })).toHaveCount(0);
 
   // Position dans la journée (« 3/9 ») : le match suivant avance d'un cran, quelles que soient les données.
   const pos = page.locator('.glass-group .num-sm');
@@ -74,22 +76,43 @@ test('Fiche match à venir : pronostic expliqué, sommaire, retour à la même p
   test.skip(k >= n, 'dernier match de la journée');
   await page.getByRole('button', { name: 'Match suivant de la journée' }).click();
   await expect(pos).toHaveText(`${k + 1}/${n}`);
+  // Le match suivant s'ouvre sur le même onglet.
+  await expect(tabs.getByRole('tab', { selected: true })).toHaveText('Face-à-face');
 
   await page.getByRole('button', { name: /^Retour/ }).click();
   await expect(page).toHaveURL(/#\/matchs/);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(y - 40);
 });
 
-test('Fiche match joué : buteurs et détail des points par source', async ({ page }) => {
+test('Fiche match joué : feuille de match, détail des points par source', async ({ page }) => {
   await page.goto('/#/matchs?j=1');
   await page.locator('.match-row').first().click();
   await expect(page.locator('.hero-mid .num-xl')).toHaveText(/\d+ – \d+/);
+  // Feuille de match : onze titulaires sur le terrain pour chaque équipe, remplaçants, déroulé.
+  const tabs = page.locator('.subnav');
+  await expect(tabs.getByRole('tab', { selected: true })).toHaveText('Feuille de match');
+  await expect(page.locator('.pitch .pp')).toHaveCount(11);
+  await expect(page.locator('.pitch .pp-note').first()).toHaveText(/^\d+\.\d$/);
+  await page.locator('.sheet-seg').getByRole('tab').nth(1).click();
+  await expect(page.locator('.sheet-seg').getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.pitch .pp')).toHaveCount(11);
+  await expect(page.getByRole('heading', { name: 'Remplaçants' })).toBeVisible();
+  await expect(page.locator('.timeline .tl-row').first()).toBeAttached();
+  // Le score affiché au dernier but du déroulé est le score final.
+  const final = (await page.locator('.hero-mid .num-xl').innerText()).replace(/\s/g, '').replace('–', '-');
+  const goals = page.locator('.timeline .tl-row.goal b');
+  if (await goals.count()) await expect(goals.last()).toHaveText(final);
+  await noHorizontalOverflow(page);
+  await shot(page, '4-feuille-de-match');
+
+  await tabs.getByRole('tab', { name: 'Pronostic' }).click();
   await expect(page.getByText('calculé la veille du match')).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Points' }).click();
   const first = page.locator('.row-details').first();
   await first.locator('summary').click();
   for (const k of ['Équipe', "Note L'Équipe estimée", 'Actions', 'Défense', 'Cartons']) await expect(first.getByText(k, { exact: false }).first()).toBeVisible();
   await noHorizontalOverflow(page);
-  await shot(page, '4-match-joue');
+  await shot(page, '4-points-match');
 });
 
 test('Saison d\'un club : L1 et coupes, repère « Aujourd\'hui »', async ({ page }) => {
@@ -190,11 +213,18 @@ test('Joueurs : filtres, badge supersub, vue Forme', async ({ page }) => {
 test('Fiche joueur et fiche club : sections, graphique, changer de coéquipier ou de club', async ({ page }) => {
   await page.goto('/#/joueurs');
   await page.locator('.pcard').first().click();
-  for (const h of ['Résumé', 'Points par match', 'Match par match', 'Prochains matchs']) await expect(page.getByRole('heading', { name: h })).toBeAttached();
+  await expect(page.getByRole('heading', { name: 'Résumé' })).toBeVisible();
+  const tabs = page.locator('.subnav');
+  for (const [t, h] of [['Match par match', 'Match par match'], ['À venir', 'Prochains matchs'], ['Points', 'Points par match']]) {
+    await tabs.getByRole('tab', { name: t, exact: true }).click();
+    await expect(page.getByRole('heading', { name: h })).toBeVisible();
+    await expect(tabs.getByRole('tab', { selected: true })).toHaveText(t);
+  }
   await expect(page.locator('.pchart svg rect').first()).toBeAttached();
   await noHorizontalOverflow(page);
   await shot(page, '9-fiche-joueur');
   // Comparatif au poste : centiles, changement de stat, toucher un point du nuage.
+  await tabs.getByRole('tab', { name: 'Comparatif' }).click();
   const cmp = page.locator('#compare');
   await expect(cmp.locator('.pct-row')).not.toHaveCount(0);
   for (const t of await cmp.locator('.pct-num').allInnerTexts()) if (t !== '—') expect(Number(t)).toBeGreaterThanOrEqual(0), expect(Number(t)).toBeLessThanOrEqual(100);
@@ -208,23 +238,49 @@ test('Fiche joueur et fiche club : sections, graphique, changer de coéquipier o
   await cmp.screenshot({ path: 'screenshots/11-comparatif-poste.png' });
 
   const before = page.url();
+  await tabs.getByRole('tab', { name: 'Coéquipiers' }).click();
   await page.locator('.rail.people .rail-item').first().click();
   await expect(page).not.toHaveURL(before);
   await expect(page).toHaveURL(/#\/joueur\/\d+/);
 
   await page.goto('/#/club/Marseille');
-  for (const h of ['Résumé', 'Calendrier', 'Effectif', 'Coupes', 'Infirmerie', 'Historique']) await expect(page.getByRole('heading', { name: h, exact: true })).toBeAttached();
+  for (const h of ['Résumé', 'Derniers résultats', 'À venir', 'Joueurs clés']) await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
   await noHorizontalOverflow(page);
   await shot(page, '10-fiche-club');
+  // Chaque onglet n'affiche que sa rubrique, et c'est lui qui est marqué (plus « Résumé » en permanence).
+  const clubTabs = page.locator('.subnav');
+  for (const h of ['Calendrier', 'Effectif', 'Coupes', 'Infirmerie', 'Palmarès', 'Historique']) {
+    await clubTabs.getByRole('tab', { name: new RegExp(`^${h}`) }).click();
+    await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
+    await expect(clubTabs.getByRole('tab', { selected: true })).toHaveText(new RegExp(`^${h}`));
+    await expect(page.getByRole('heading', { name: 'Résumé', exact: true })).toHaveCount(0);
+  }
+  // Calendrier : à venir par défaut, résultats du plus récent au plus ancien.
+  await clubTabs.getByRole('tab', { name: 'Calendrier' }).click();
+  await page.getByRole('button', { name: 'Résultats' }).click();
+  await expect(page.locator('.match-row .score').first()).toBeVisible();
+  // Changer d'onglet après avoir fait défiler : on revient au début du contenu, la barre d'onglets collée en haut.
+  await page.getByRole('button', { name: 'Toute la saison' }).click();
+  await page.evaluate(() => window.scrollTo(0, 2500));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);
+  await clubTabs.getByRole('tab', { name: /^Effectif/ }).click();
+  await expect(page.getByRole('heading', { name: 'Effectif', exact: true })).toBeInViewport();
+  expect(await clubTabs.evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(120);
+  await clubTabs.getByRole('tab', { name: 'Calendrier' }).click();
+  await expect(page).toHaveURL(/t=calendrier/);
+  // Changer de club garde l'onglet ouvert.
   await page.locator('.club-rail .rail-item', { hasText: 'Lyon' }).click();
   await expect(page.getByRole('heading', { name: 'Lyon', level: 1 })).toBeVisible();
+  await expect(clubTabs.getByRole('tab', { selected: true })).toHaveText('Calendrier');
 });
 
 test('Infirmerie : compteurs, filtre club en un geste, recherche, absents groupés par club', async ({ page }) => {
   await page.goto('/');
-  await page.locator('.tabbar').getByRole('button', { name: 'Plus' }).click();
-  await page.getByRole('dialog', { name: 'Plus de rubriques' }).getByRole('link', { name: /Infirmerie/ }).click();
+  // L'infirmerie est un onglet de la barre du bas ; les six libellés tiennent en entier.
+  for (const el of await page.locator('.tabbar .tb span').all()) expect(await el.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
+  await page.locator('.tabbar').getByRole('link', { name: 'Infirmerie' }).click();
   await expect(page.getByRole('heading', { name: 'Infirmerie', level: 1 })).toBeVisible();
+  await expect(page.locator('.tabbar .tb.active')).toHaveText('Infirmerie');
   const total = await page.locator('#root .row').count();
   expect(total).toBeGreaterThan(0);
   const counts = (await page.locator('.inj-tile b').allInnerTexts()).map(Number);

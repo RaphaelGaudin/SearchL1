@@ -59,7 +59,7 @@ export function Injuries() {
 
   return (
     <div className="page">
-      <NavBar title="Infirmerie" back="Plus" fallback="/" />
+      <NavBar title="Infirmerie" />
       <LargeTitle sub={`${d.nextRound ? `Avant la J${d.nextRound}` : 'Prochaine journée'} · ${all.length} absents · source ${all[0]?.a.source ?? 'Sofascore'}`}>Infirmerie</LargeTitle>
 
       <div className="inj-counters" role="group" aria-label="Filtrer par type">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createHashRouter, NavLink, Outlet, RouterProvider, ScrollRestoration, useLocation, useNavigate } from 'react-router-dom';
 import { Icon, Logo, type IconName } from './components/Icon.tsx';
 import { SearchSheet } from './components/SearchSheet.tsx';
@@ -23,14 +23,15 @@ const TABS: { to: string; label: string; icon: IconName; match: RegExp }[] = [
   { to: '/matchs', label: 'Matchs', icon: 'calendar', match: /^\/match/ },
   { to: '/classement', label: 'Classement', icon: 'table', match: /^\/classement/ },
   { to: '/joueurs', label: 'Joueurs', icon: 'player', match: /^\/joueur/ },
+  { to: '/infirmerie', label: 'Infirmerie', icon: 'cross', match: /^\/infirmerie/ },
 ];
 const MORE: { to: string; label: string; note: string; icon: IconName; soon?: boolean }[] = [
   { to: '/equipes', label: 'Équipes', note: '18 fiches club', icon: 'shield' },
-  { to: '/infirmerie', label: 'Infirmerie', note: 'blessés, suspendus, incertains', icon: 'cross' },
   { to: '/historique', label: 'Historique', note: 'classements depuis 2014-15', icon: 'history' },
   { to: '/bareme', label: 'Calcul des points', note: 'barème du jeu', icon: 'info' },
 ];
-const MORE_PATHS = /^\/(equipes|club|infirmerie|historique|bareme)/;
+const MORE_PATHS = /^\/(equipes|club|historique|bareme)/;
+const PLUS = TABS.length;
 
 /**
  * Barre d'onglets réduite (icônes seules) quand on fait défiler vers le bas, pleine dès qu'on remonte :
@@ -95,7 +96,20 @@ function Layout() {
   const [path, setPath] = useState(loc.pathname + loc.search);
   if (path !== loc.pathname + loc.search) { setPath(loc.pathname + loc.search); setMore(false); setSearch(false); }
 
-  const active = MORE_PATHS.test(loc.pathname) || more ? 4 : Math.max(0, TABS.findIndex(t => t.match.test(loc.pathname)));
+  const active = MORE_PATHS.test(loc.pathname) || more ? PLUS : Math.max(0, TABS.findIndex(t => t.match.test(loc.pathname)));
+  // Onglets de largeurs différentes (« Classement » est plus long que « Plus ») : la pastille suit l'onglet actif.
+  const bar = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const el = bar.current?.querySelectorAll<HTMLElement>('.tb')[active];
+      if (el) { bar.current!.style.setProperty('--lx', `${el.offsetLeft}px`); bar.current!.style.setProperty('--lw', `${el.offsetWidth}px`); }
+    };
+    place();
+    // La barre se réduit en défilant (transition de 0,3 s) : on replace la pastille à la fin.
+    const t = setTimeout(place, 320);
+    window.addEventListener('resize', place);
+    return () => { clearTimeout(t); window.removeEventListener('resize', place); };
+  }, [active, compact]);
 
   return (
     <UiCtx.Provider value={{ openSearch: () => setSearch(true) }}>
@@ -112,14 +126,14 @@ function Layout() {
       <main className="wrap main"><Outlet /></main>
 
       <div className={`dock${compact ? ' compact' : ''}`}>
-        <nav className="tabbar glass" aria-label="Navigation" style={{ '--active': active } as React.CSSProperties}>
+        <nav ref={bar} className="tabbar glass" aria-label="Navigation">
           <span className="tab-lens" aria-hidden="true" />
           {TABS.map((t, i) => (
             <NavLink key={t.to} to={t.to} className={`tb${active === i ? ' active' : ''}`} aria-current={active === i ? 'page' : undefined}>
               <Icon name={t.icon} /><span>{t.label}</span>
             </NavLink>
           ))}
-          <button className={`tb${active === 4 ? ' active' : ''}`} onClick={() => setMore(v => !v)} aria-expanded={more}>
+          <button className={`tb${active === PLUS ? ' active' : ''}`} onClick={() => setMore(v => !v)} aria-expanded={more}>
             <Icon name="more" /><span>Plus</span>
           </button>
         </nav>

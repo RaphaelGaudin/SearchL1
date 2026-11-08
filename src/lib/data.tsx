@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { buildData, type Data } from './model.ts';
 import { awaitingScores, lastScoreSlot, slot } from './schedule.ts';
-import type { HistoryFile, Match, MetaFile, PalmaresFile, SeasonFile } from './types.ts';
+import type { HistoryFile, Match, MatchSheet, MetaFile, PalmaresFile, SeasonFile, SheetsFile } from './types.ts';
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Data };
 export interface Freshness { refreshing: boolean; checkedAt: number; refresh: () => void }
@@ -98,3 +98,20 @@ export function useData(): Data {
 }
 
 export const useFreshness = () => useContext(FreshCtx);
+
+// Feuilles de match : fichier à part, chargé seulement quand on ouvre un match (et rechargé après une mise à jour).
+let sheets: { at: string; p: Promise<SheetsFile | null> } | null = null;
+
+/** Feuille d'un match : undefined pendant le chargement, null si elle n'existe pas. */
+export function useSheet(id: number): MatchSheet | null | undefined {
+  const at = useData().meta.updatedAt;
+  const [got, setGot] = useState<{ at: string; f: SheetsFile | null } | null>(null);
+  useEffect(() => {
+    if (sheets?.at !== at) sheets = { at, p: load<SheetsFile>('sheets').catch(() => null) };
+    let live = true;
+    sheets.p.then(f => { if (live) setGot({ at, f }); });
+    return () => { live = false; };
+  }, [at]);
+  if (!got || got.at !== at) return undefined;
+  return got.f?.[id] ?? null;
+}

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Result } from '../lib/standings.ts';
 import { pct } from '../lib/format.ts';
 
@@ -60,13 +60,49 @@ export function pcts(p: { H: number; D: number; A: number }): [number, number, n
 }
 
 /** Sommaire collant sous la barre du haut : un geste pour aller à une section. */
-export function SubNav({ items }: { items: [string, string][] }) {
+/**
+ * Onglet affiché d'une fiche, gardé dans l'adresse (?t=…) : on le retrouve en revenant en arrière
+ * ou en passant au club, au joueur ou au match suivant. Sans ?t, c'est le premier onglet.
+ */
+export function useTab(items: [string, string][]): [string, (k: string) => void] {
+  const [params, setParams] = useSearchParams();
+  const t = params.get('t');
+  const cur = items.some(([k]) => k === t) ? t! : items[0][0];
+  const set = (k: string) => setParams(p => {
+    const n = new URLSearchParams(p);
+    if (k === items[0][0]) n.delete('t'); else n.set('t', k);
+    return n;
+  }, { replace: true, preventScrollReset: true });
+  return [cur, set];
+}
+
+/** Onglets collants d'une fiche : un seul contenu à la fois, plus besoin de faire défiler toute la page. */
+export function SubNav({ items, value, onChange }: { items: [string, string][]; value: string; onChange: (k: string) => void }) {
+  const nav = useRef<HTMLElement>(null);
+  const anchor = useRef<HTMLDivElement>(null);
+  const first = useRef(true);
+  // L'onglet choisi reste visible dans la barre.
+  useLayoutEffect(() => {
+    const el = nav.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (el && nav.current) nav.current.scrollLeft = el.offsetLeft - nav.current.clientWidth / 2 + el.clientWidth / 2;
+  }, [value]);
+  // Changer d'onglet après avoir fait défiler : on remonte au début du contenu, la barre d'onglets en haut.
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const a = anchor.current, n = nav.current;
+    if (!a || !n) return;
+    const top = a.getBoundingClientRect().top + window.scrollY - parseFloat(getComputedStyle(n).top || '0');
+    if (window.scrollY > top) window.scrollTo({ top });
+  }, [value]);
   return (
-    <nav className="subnav" aria-label="Sommaire">
-      {items.map(([k, l]) => (
-        <a key={k} href={`#${k}`} onClick={e => { e.preventDefault(); document.getElementById(k)?.scrollIntoView({ behavior: 'smooth' }); }}>{l}</a>
-      ))}
-    </nav>
+    <>
+      <div ref={anchor} aria-hidden="true" />
+      <nav className="subnav" ref={nav} role="tablist" aria-label="Rubriques">
+        {items.map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={k === value} className={k === value ? 'on' : undefined} onClick={() => onChange(k)}>{l}</button>
+        ))}
+      </nav>
+    </>
   );
 }
 

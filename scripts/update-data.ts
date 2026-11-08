@@ -9,9 +9,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { CLUB_NAMES, clubBySofascoreId } from '../src/lib/clubs.ts';
 import { awaitingScores } from '../src/lib/schedule.ts';
-import type { Absence, CupCode, CupMatch, GoalEvent, HistoryFile, Match, MetaFile, Player, PlayerLog, Position, SeasonFile } from '../src/lib/types.ts';
+import type { Absence, CupCode, CupMatch, GoalEvent, HistoryFile, Match, MatchSheet, MetaFile, Player, PlayerLog, Position, SeasonFile, SheetEvent, SheetPlayer, SheetsFile } from '../src/lib/types.ts';
 import { fetchSeason, type OfMatch } from './lib/openfootball.ts';
-import { Sofascore, type SfEvent, type SfIncident, type SfLineups, type SfMissing } from './lib/sofascore.ts';
+import { Sofascore, type SfEvent, type SfIncident, type SfLineupSide, type SfLineups, type SfMissing } from './lib/sofascore.ts';
 import { checkGoals, checkStandings, type PublishedRow } from './lib/validate.ts';
 
 const OUT = path.resolve('public/data');
@@ -82,7 +82,24 @@ const clubOf = (t: { id: number; shortName: string }) => clubBySofascoreId.get(t
  * Saison complète. Avec `scores` (récupération après des matchs), les absents et les coupes sont repris
  * des données précédentes : seuls le calendrier, le classement et les feuilles des matchs finis sont lus.
  */
-async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promise<{ file: SeasonFile; published: PublishedRow[] }> {
+/** Déroulé du match (buts, cartons, remplacements), dans l'ordre. Un csc est rangé côté bénéficiaire, comme les buts. */
+function sheetEvents(inc: SfIncident[]): SheetEvent[] {
+  const name = (p?: { name: string; shortName?: string }) => p?.shortName ?? p?.name ?? '?';
+  const out: SheetEvent[] = [];
+  for (const i of [...inc].reverse()) {
+    const min = (i.time ?? 0) + (i.addedTime ?? 0), home = !!i.isHome;
+    if (i.incidentType === 'goal') {
+      out.push({ min, home, kind: i.incidentClass === 'penalty' ? 'pen' : i.incidentClass === 'ownGoal' ? 'og' : 'goal', player: name(i.player), other: i.assist1 ? name(i.assist1) : undefined });
+    } else if (i.incidentType === 'card' && i.player) {
+      out.push({ min, home, kind: i.incidentClass === 'yellow' ? 'yellow' : 'red', player: name(i.player) });
+    } else if (i.incidentType === 'substitution' && i.playerIn) {
+      out.push({ min, home, kind: 'sub', player: name(i.playerIn), other: i.playerOut ? name(i.playerOut) : undefined });
+    }
+  }
+  return out;
+}
+
+async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promise<{ file: SeasonFile; sheets: SheetsFile; published: PublishedRow[] }> {
   const now = Date.now();
   const events: SfEvent[] = [];
   for (let j = 1; j <= ROUNDS; j++) {
@@ -93,6 +110,7 @@ async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promis
   log(`${events.length} matchs au calendrier`);
 
   const matches: Match[] = [];
+  const sheets: SheetsFile = {};
   const players = new Map<number, Player>();
   const incompleteIncidents: { m: Match; inc: SfIncident[] }[] = [];
 
@@ -119,6 +137,8 @@ async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promis
       kind: i.incidentClass === 'penalty' ? 'penalty' : i.incidentClass === 'ownGoal' ? 'own' : 'regular',
     }));
     m.goals = goals;
+    const sheet: MatchSheet = { events: sheetEvents(inc) };
+    sheets[m.id] = sheet;
     const lineups = e.hasEventPlayerStatistics === false ? null : await sf.get<SfLineups>(`/api/v1/event/${e.id}/lineups`, { cache, after });
     // Juste après le coup de sifflet, les compositions peuvent être là sans les stats : on attend la mise à jour suivante.
     const stats = !!lineups?.home?.players?.some(p => p.statistics?.minutesPlayed);
@@ -138,6 +158,29 @@ async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promis
     const ogs = byPlayer(i => i.incidentType === 'goal' && i.incidentClass === 'ownGoal');
     const yel = byPlayer(i => i.incidentType === 'card' && i.incidentClass === 'yellow');
     const red = byPlayer(i => i.incidentType === 'card' && (i.incidentClass === 'red' || i.incidentClass === 'yellowRed'));
+    const minuteOf = (pick: (i: SfIncident) => number | undefined) => {
+      const c = new Map<number, number>();
+      inc.filter(i => i.incidentType === 'substitution').forEach(i => { const id = pick(i); if (id != null) c.set(id, (i.time ?? 0) + (i.addedTime ?? 0)); });
+      return c;
+    };
+    const subIn = minuteOf(i => i.playerIn?.id), subOut = minuteOf(i => i.playerOut?.id);
+    const sheetSide = (L: SfLineupSide) => {
+      const toSheet = (lp: SfLineups['home']['players'][number]): SheetPlayer => {
+        const st = lp.statistics ?? {}, id = lp.player.id;
+        return {
+          id, n: lp.player.shortName ?? lp.player.name, num: lp.shirtNumber, pos: POS[lp.player.position ?? lp.position ?? 'M'] ?? 'M',
+          min: st.minutesPlayed ?? 0, r: st.rating ?? null, g: st.goals ?? 0, a: st.goalAssist ?? 0,
+          og: ogs.get(id) ?? 0, y: yel.get(id) ?? 0, rc: red.get(id) ?? 0, in: subIn.get(id), out: subOut.get(id),
+        };
+      };
+      return {
+        formation: L.formation, color: L.playerColor?.primary ? `#${L.playerColor.primary}` : undefined,
+        ink: L.playerColor?.number ? `#${L.playerColor.number}` : undefined,
+        xi: L.players.filter(p => !p.substitute).map(toSheet), bench: L.players.filter(p => p.substitute).map(toSheet),
+      };
+    };
+    sheet.home = sheetSide(lineups.home);
+    sheet.away = sheetSide(lineups.away);
 
     for (const [side, home] of [['home', true], ['away', false]] as const) {
       const club = home ? h : a;
@@ -218,7 +261,7 @@ async function buildSeason(sf: Sofascore, scores?: { prev: SeasonFile }): Promis
   log(`${finished.length} matchs joués, ${players.size} joueurs, ${absences.length} absents, ${cups.length} matchs de coupe`);
   return {
     file: { season: SEASON, matches: matches.sort((x, y) => x.j - y.j || x.d.localeCompare(y.d)), players: [...players.values()], absences, cups },
-    published,
+    sheets, published,
   };
 }
 
@@ -380,11 +423,13 @@ async function main() {
   sources.history = 'openfootball';
 
   let season: SeasonFile;
+  // Sans Sofascore (secours openfootball), les feuilles de match publiées restent en place.
+  let sheets: SheetsFile | null = null;
   let published: PublishedRow[] = [];
   const sf = new Sofascore();
   try {
     await sf.open();
-    ({ file: season, published } = await buildSeason(sf, scores));
+    ({ file: season, sheets, published } = await buildSeason(sf, scores));
     sources.season = 'Sofascore';
   } catch (e) {
     // Sans Sofascore, une récupération de scores n'a pas de secours (openfootball arrive des heures plus tard).
@@ -429,6 +474,7 @@ async function main() {
   };
   write('history.json', history);
   write('season.json', season);
+  if (sheets) write('sheets.json', sheets);
   write('meta.json', meta);
   log(`OK : J${meta.lastRound} jouée, prochaine J${meta.nextRound}, ${warnings.length} avertissement(s)`);
 }

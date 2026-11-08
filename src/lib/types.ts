@@ -112,6 +112,48 @@ export interface SeasonFile {
   cups: CupMatch[];
 }
 
+/** Feuille de match : compositions, remplacements, cartons (fichier sheets.json, chargé à la demande). */
+export interface SheetPlayer {
+  id: number;
+  n: string;
+  num?: number;
+  pos: Position;
+  /** Minutes jouées (0 : remplaçant non entré). */
+  min: number;
+  r: number | null;
+  g: number;
+  a: number;
+  og: number;
+  y: number;
+  rc: number;
+  /** Minute d'entrée en jeu ou de sortie. */
+  in?: number;
+  out?: number;
+}
+export interface SheetSide {
+  formation?: string;
+  /** Couleurs du maillot (fond, numéro). */
+  color?: string;
+  ink?: string;
+  /** Titulaires dans l'ordre Sofascore : gardien, puis chaque ligne de droite à gauche. */
+  xi: SheetPlayer[];
+  bench: SheetPlayer[];
+}
+export interface SheetEvent {
+  min: number;
+  home: boolean;
+  kind: 'goal' | 'pen' | 'og' | 'yellow' | 'red' | 'sub';
+  player: string;
+  /** Passeur (but) ou joueur sorti (remplacement). */
+  other?: string;
+}
+export interface MatchSheet {
+  home?: SheetSide;
+  away?: SheetSide;
+  events: SheetEvent[];
+}
+export type SheetsFile = Record<string, MatchSheet>;
+
 /** Historique : une saison = liste compacte [journée, date, domicile, extérieur, buts dom., buts ext.]. */
 export type HistoryRow = [number, string, string, string, number, number];
 export interface HistoryFile {
