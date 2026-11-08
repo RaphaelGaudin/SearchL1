@@ -4,6 +4,7 @@ import { Icon, Logo, type IconName } from './components/Icon.tsx';
 import { SearchSheet } from './components/SearchSheet.tsx';
 import { DataProvider, useData, useFreshness } from './lib/data.tsx';
 import { slot } from './lib/schedule.ts';
+import { useTheme, type Theme } from './lib/theme.ts';
 import { UiCtx } from './lib/ui-context.ts';
 import { Bareme } from './pages/Bareme.tsx';
 import { ClubPage } from './pages/ClubPage.tsx';
@@ -85,12 +86,34 @@ function Freshness() {
   );
 }
 
+const THEMES: [Theme, string][] = [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']];
+
+/** Choix du thème : automatique (suit l'iPhone), clair ou sombre. */
+function ThemePicker() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <div className="row theme-row">
+      <span className="grow">Affichage<small className="muted block">{theme === 'auto' ? "suit le réglage de l'iPhone" : theme === 'dark' ? 'toujours sombre' : 'toujours clair'}</small></span>
+      <div className="seg" role="radiogroup" aria-label="Thème">
+        {THEMES.map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={theme === k} aria-selected={theme === k} onClick={() => setTheme(k)}>{l}</button>)}
+      </div>
+    </div>
+  );
+}
+
 function Layout() {
   const [search, setSearch] = useState(false);
   const [more, setMore] = useState(false);
   const loc = useLocation();
   useEdgeSwipeBack();
   const compact = useCompactDock() && !more;
+  useTheme(); // couleur de la barre d'état dès l'ouverture, pour un thème forcé
+  useEffect(() => {
+    if (!more) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMore(false); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [more]);
   // Fermer les feuilles quand on change de page.
   const [path, setPath] = useState(loc.pathname + loc.search);
   if (path !== loc.pathname + loc.search) { setPath(loc.pathname + loc.search); setMore(false); setSearch(false); }
@@ -168,9 +191,9 @@ function Layout() {
       </div>
 
       {more && (
-        <div className="sheet-backdrop" onClick={() => setMore(false)}>
-          <div className="sheet glass" role="dialog" aria-label="Plus de rubriques" onClick={e => e.stopPropagation()}>
-            <div className="grab" />
+        // Menu déroulé sous le bouton « ··· » de la barre du haut.
+        <div className="menu-backdrop" onClick={() => setMore(false)}>
+          <div className="menu-pop glass" role="dialog" aria-label="Plus de rubriques" onClick={e => e.stopPropagation()}>
             <div className="group">
               {MORE.map(m => (
                 <NavLink key={m.to} to={m.to} className="row link">
@@ -178,6 +201,7 @@ function Layout() {
                 </NavLink>
               ))}
             </div>
+            <div className="group"><ThemePicker /></div>
             <div className="group"><Freshness /></div>
           </div>
         </div>

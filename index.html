@@ -13,6 +13,10 @@
     <link rel="icon" type="image/svg+xml" href="icons/logo.svg" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <title>SearchL1</title>
+    <script>
+      // Thème choisi dans le menu (clair / sombre), appliqué avant l'affichage pour éviter un flash.
+      try { var t = localStorage.getItem('searchl1-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

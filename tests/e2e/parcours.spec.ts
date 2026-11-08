@@ -146,8 +146,24 @@ test('Navigation : onglets, Plus, recherche, classement', async ({ page }) => {
   const more = page.getByRole('dialog', { name: 'Plus de rubriques' });
   await expect(more).toBeVisible();
   for (const r of ['Équipes', 'Historique', 'Calcul des points', 'Actualiser les données']) await expect(more.getByText(r)).toBeVisible();
+  // Le menu s'ouvre sous le bouton, en haut de l'écran.
+  expect((await more.boundingBox())!.y).toBeLessThan(120);
+  // Thème : forcé sombre puis clair, gardé après rechargement, retour en automatique.
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  await more.getByRole('radio', { name: 'Sombre' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await bg()).toBe('rgb(14, 20, 17)');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await bg()).toBe('rgb(14, 20, 17)');
+  await page.getByRole('button', { name: 'Plus de rubriques' }).click();
+  await expect(more.getByRole('radio', { name: 'Sombre' })).toHaveAttribute('aria-checked', 'true');
+  await more.getByRole('radio', { name: 'Clair' }).click();
+  expect(await bg()).toBe('rgb(236, 239, 234)');
+  await more.getByRole('radio', { name: 'Auto' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
   await page.keyboard.press('Escape');
-  await page.locator('.sheet-backdrop').click({ position: { x: 10, y: 10 } });
+  await expect(more).toHaveCount(0);
   await page.locator('.navbar-glass').getByRole('button', { name: 'Rechercher' }).click();
   const input = page.getByPlaceholder('Joueur, club ou match');
   await expect(input).toBeFocused();
