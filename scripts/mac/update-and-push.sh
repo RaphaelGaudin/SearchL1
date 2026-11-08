@@ -44,10 +44,20 @@ done
 
 # git pull, avec trois essais en cas de coupure.
 for i in 1 2 3; do
-  git pull --ff-only --quiet && break
-  [ "$i" = 3 ] && fail "git pull impossible : nouvel essai plus tard."
+  git fetch --quiet && break
+  [ "$i" = 3 ] && fail "git fetch impossible : nouvel essai plus tard."
   sleep 20
 done
+# Un push raté (identifiants GitHub indisponibles, Mac verrouillé…) laisse un commit de données local qui
+# bloquerait toutes les mises à jour suivantes : il ne contient que des données, refaites juste après, donc on l'abandonne.
+if ! git merge --ff-only --quiet origin/main 2>/dev/null; then
+  if [ -z "$(git diff --name-only origin/main...HEAD -- . ':!public/data' ':!public/photos' ':!public/logos')" ]; then
+    echo "Données locales jamais poussées : remplacées par celles de GitHub."
+    git reset --hard --quiet origin/main
+  else
+    fail "La copie du dépôt a des changements autres que des données : mise à jour annulée, à régler à la main."
+  fi
+fi
 # Une autre source (la GitHub Action, un autre Mac) a peut-être déjà publié la mise à jour.
 case "$(mode)" in
   0) [ "$MODE" = complete ] || { MODE=complete; WAIT=7200; RETRY_FILE="${RETRY_FILE%-*}-complete"; } ;;
