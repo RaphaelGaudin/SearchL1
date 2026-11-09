@@ -215,6 +215,15 @@ test('Comparer deux joueurs depuis une fiche, départs et palmarès', async ({ p
   // Le choix du second joueur s'ouvre tout seul.
   const pick = page.getByRole('dialog', { name: 'Choisir un joueur' });
   await expect(pick).toBeVisible();
+  // Filtres : le poste du premier joueur est présélectionné ; club et prix maximum réduisent la liste.
+  const posLabel = { G: 'Gardiens', D: 'Défenseurs', M: 'Milieux', A: 'Attaquants' }[a.pos as 'G'];
+  await expect(pick.getByRole('radio', { name: posLabel })).toHaveAttribute('aria-checked', 'true');
+  await pick.getByRole('radio', { name: 'Tous les postes' }).click();
+  const all = await pick.locator('.search-res .row').count();
+  await pick.getByRole('combobox', { name: 'Club' }).selectOption(b.club);
+  await expect(pick.locator('.search-res .row').first()).toContainText(b.club);
+  expect(await pick.locator('.search-res .row').count()).toBeLessThanOrEqual(all);
+  await page.screenshot({ path: 'screenshots/13b-choix-filtres.png' });
   await pick.getByRole('searchbox').fill(b.n.split(' ').at(-1));
   await pick.getByRole('button', { name: new RegExp(b.n.split(' ').at(-1)) }).first().click();
   await expect(page).toHaveURL(new RegExp(`a=${a.id}.*b=${b.id}`));

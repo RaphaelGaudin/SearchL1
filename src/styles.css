@@ -737,3 +737,11 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .alert-btn.on { background: var(--accent-soft); border-color: transparent; }
 .alert-btn:disabled { opacity: .6; }
 .alert-err { margin: 0; color: var(--down); }
+
+/* ---------- filtres du choix de joueur à comparer ---------- */
+.picker-filters { display: grid; gap: 8px; padding-top: 10px; }
+.picker-selects { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.picker-selects::-webkit-scrollbar { display: none; }
+.picker-selects .select { flex: none; }
+.picker-selects select { font-size: 15px; }
+.picker-filters .textbtn.tiny { min-height: 0; padding: 0; font-size: inherit; }

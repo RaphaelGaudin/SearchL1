@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Crest } from '../components/Crest.tsx';
 import { LargeTitle, NavBar } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Avatar } from '../components/PlayerRow.tsx';
-import { Card, Empty, Estimate, Group, Section } from '../components/ui.tsx';
+import { Card, Empty, Estimate, Group, Price, Section } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
-import { norm, num, POSITION } from '../lib/format.ts';
+import { norm, num, POSITION, POSITIONS } from '../lib/format.ts';
+import { CLUB_NAMES } from '../lib/clubs.ts';
+import type { Position } from '../lib/types.ts';
 import { windowStats, type Period, type PlayerStats, type WindowStats } from '../lib/model.ts';
 
 // Couleurs des deux joueurs (palette des graphiques, dans l'ordre).
@@ -97,7 +99,7 @@ export function Compare() {
         </>
       ) : <Empty>Choisissez deux joueurs pour les comparer.</Empty>}
 
-      {picking != null && <Picker exclude={ids[picking ? 0 : 1]?.id} onPick={p => choose(picking, p)} onClose={() => setPicking(null)} />}
+      {picking != null && <Picker exclude={ids[picking ? 0 : 1]?.id} pos={ids[picking ? 0 : 1]?.pos} onPick={p => choose(picking, p)} onClose={() => setPicking(null)} />}
     </div>
   );
 }
@@ -162,11 +164,23 @@ function DuoChart({ a, b, rounds }: { a: PlayerStats; b: PlayerStats; rounds: nu
   );
 }
 
-function Picker({ exclude, onPick, onClose }: { exclude?: number; onPick: (p: PlayerStats) => void; onClose: () => void }) {
+const PRIX_MAX = [5, 7, 9, 11, 13, 15];
+const SORTS: [string, string, (p: PlayerStats) => number | null][] = [
+  ['pts', 'Points', p => p.pts], ['avg', 'Points par match', p => p.ptsAvg], ['value', 'Points par étoile', p => p.value], ['prix', 'Prix', p => p.prix],
+];
+
+/**
+ * Choix d'un joueur à comparer : recherche par nom, et filtres poste, club, prix maximum, tri.
+ * Le poste du joueur déjà choisi est présélectionné (on compare d'habitude un attaquant à un attaquant).
+ */
+function Picker({ exclude, pos: pos0, onPick, onClose }: { exclude?: number; pos?: Position; onPick: (p: PlayerStats) => void; onClose: () => void }) {
   const { players } = useData();
   const [q, setQ] = useState('');
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => { input.current?.focus(); }, []);
+  const [pos, setPos] = useState<Position | 'all'>(pos0 ?? 'all');
+  const [club, setClub] = useState('all');
+  const [prixMax, setPrixMax] = useState('all');
+  const [sort, setSort] = useState('pts');
+  const [limit, setLimit] = useState(40);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', k);
@@ -174,30 +188,57 @@ function Picker({ exclude, onPick, onClose }: { exclude?: number; onPick: (p: Pl
   }, [onClose]);
   const list = useMemo(() => {
     const words = norm(q.trim()).split(/\s+/).filter(Boolean);
-    return players.filter(p => p.apps > 0 && p.id !== exclude && words.every(w => norm(`${p.n} ${p.full ?? ''} ${p.club}`).includes(w)))
-      .sort((a, b) => b.pts - a.pts).slice(0, 30);
-  }, [q, players, exclude]);
+    const key = SORTS.find(x => x[0] === sort)![2];
+    return players.filter(p => p.apps > 0 && p.id !== exclude && !p.left
+      && (pos === 'all' || p.pos === pos) && (club === 'all' || p.club === club)
+      && (prixMax === 'all' || (p.prix != null && p.prix <= Number(prixMax)))
+      && words.every(w => norm(`${p.n} ${p.full ?? ''} ${p.club}`).includes(w)))
+      .sort((a, b) => (sort === 'prix' ? (key(a) ?? 99) - (key(b) ?? 99) : (key(b) ?? -99) - (key(a) ?? -99)));
+  }, [q, players, exclude, pos, club, prixMax, sort]);
+  const filtered = pos !== 'all' || club !== 'all' || prixMax !== 'all';
   return (
     <div className="sheet-backdrop top" onClick={onClose}>
       <div className="search" role="dialog" aria-label="Choisir un joueur" onClick={e => e.stopPropagation()}>
         <div className="search-head">
           <label className="search-field">
             <Icon name="search" size={18} />
-            <input ref={input} type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Nom du joueur ou club"
+            <input type="search" value={q} onChange={e => { setQ(e.target.value); setLimit(40); }} placeholder="Nom du joueur ou club"
               autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
           </label>
           <button className="textbtn" onClick={onClose}>Annuler</button>
         </div>
+        <div className="picker-filters">
+          <div className="chips-row" role="radiogroup" aria-label="Poste">
+            {([['all', 'Tous les postes'], ...Object.entries(POSITIONS)] as [Position | 'all', string][]).map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={pos === k} className={`toggle${pos === k ? ' on' : ''}`} onClick={() => { setPos(k); setLimit(40); }}>{l}</button>
+            ))}
+          </div>
+          <div className="picker-selects">
+            <label className="select"><select value={club} onChange={e => { setClub(e.target.value); setLimit(40); }} aria-label="Club">
+              <option value="all">Tous les clubs</option>
+              {[...CLUB_NAMES].sort((a, b) => a.localeCompare(b, 'fr')).map(c => <option key={c} value={c}>{c}</option>)}
+            </select><Icon name="down" size={16} /></label>
+            <label className="select"><select value={prixMax} onChange={e => { setPrixMax(e.target.value); setLimit(40); }} aria-label="Prix maximum">
+              <option value="all">Tous les prix</option>
+              {PRIX_MAX.map(v => <option key={v} value={v}>{v} ★ max</option>)}
+            </select><Icon name="down" size={16} /></label>
+            <label className="select"><select value={sort} onChange={e => setSort(e.target.value)} aria-label="Trier par">
+              {SORTS.map(([k, l]) => <option key={k} value={k}>Tri : {l}</option>)}
+            </select><Icon name="down" size={16} /></label>
+          </div>
+          <p className="tiny muted">{list.length} joueur{list.length > 1 ? 's' : ''}{filtered && <> · <button type="button" className="textbtn tiny" onClick={() => { setPos('all'); setClub('all'); setPrixMax('all'); }}>retirer les filtres</button></>}</p>
+        </div>
         <div className="search-res">
           <div className="group">
-            {list.map(p => (
+            {list.slice(0, limit).map(p => (
               <button key={p.id} className="row link" onClick={() => onPick(p)}>
                 <Avatar name={p.n} club={p.club} id={p.id} />
-                <span className="grow ellipsis">{p.n}<small className="muted block">{POSITION[p.pos]} · {p.club} · {num(p.ptsAvg)} pts/match</small></span>
+                <span className="grow ellipsis">{p.n}<small className="muted block">{p.prix != null && <><Price v={p.prix} /> · </>}{POSITION[p.pos]} · {p.club} · {num(p.ptsAvg)} pts par match</small></span>
               </button>
             ))}
-            {!list.length && <p className="muted small pad">Aucun joueur.</p>}
+            {!list.length && <p className="muted small pad">Aucun joueur avec ces filtres.</p>}
           </div>
+          {list.length > limit && <button type="button" className="glass-pill wide" onClick={() => setLimit(l => l + 40)}>Afficher plus de joueurs</button>}
         </div>
       </div>
     </div>
