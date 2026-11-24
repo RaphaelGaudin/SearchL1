@@ -756,3 +756,9 @@ tr[class^="z-"] td:first-child, tr[class*=" z-"] td:first-child { box-shadow: in
 .pt-player { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink); }
 .pt-player .rank { min-width: 18px; text-align: right; }
 .pt-abs { flex: none; font-size: 10.5px; font-weight: 700; color: var(--down); }
+
+/* ---------- Comparer : écran de choix ---------- */
+.cmp-choice { display: grid; gap: 12px; }
+.cmp-choice-btn { justify-items: start; gap: 6px; padding: 18px; text-align: left; font: inherit; color: var(--ink); }
+.cmp-choice-btn .strong { font-size: 18px; }
+.cmp-choice-ico { display: inline-flex; gap: 2px; color: var(--accent); }

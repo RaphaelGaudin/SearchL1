@@ -46,7 +46,11 @@ export function Compare() {
   const [period, setPeriod] = useState<Period>('saison');
   const ids = [params.get('a'), params.get('b')].map(x => (x ? d.playerById.get(Number(x)) : undefined));
   // Arrivé depuis une fiche joueur (?a= seul) : on propose tout de suite de choisir le second.
-  const [picking, setPicking] = useState<0 | 1 | null>(() => (!ids[0] ? 0 : !ids[1] ? 1 : null));
+  // Arrivé depuis une fiche joueur (?a= seul) : on propose tout de suite de choisir le second joueur.
+  const [picking, setPicking] = useState<0 | 1 | null>(() => (ids[0] && !ids[1] ? 1 : null));
+  // Arrivé depuis le menu (ni joueur ni onglet dans l'adresse) : d'abord le choix entre deux joueurs et tout un poste.
+  const [chosen, setChosen] = useState(false);
+  const landing = !chosen && !params.get('t') && !ids[0] && !ids[1];
   const choose = (slot: 0 | 1, p: PlayerStats) => {
     setParams(prev => { const n = new URLSearchParams(prev); n.set(slot ? 'b' : 'a', String(p.id)); return n; }, { replace: true });
     setPicking(null);
@@ -60,10 +64,23 @@ export function Compare() {
     <div className="page">
       <NavBar title="Comparer" back="Retour" fallback="/joueurs" />
       <LargeTitle sub={<>barème du jeu <Estimate /></>}>Comparer</LargeTitle>
-      <SubNav items={TABS} value={tab} onChange={setTab} />
+      {landing ? (
+        <div className="cmp-choice">
+          <button type="button" className="card cmp-choice-btn" onClick={() => { setChosen(true); setPicking(0); }}>
+            <span className="cmp-choice-ico" aria-hidden="true"><Icon name="player" size={26} /><Icon name="player" size={26} /></span>
+            <span className="strong">Deux joueurs</span>
+            <span className="small muted">Leurs stats côte à côte et leurs points journée par journée.</span>
+          </button>
+          <button type="button" className="card cmp-choice-btn" onClick={() => { setChosen(true); setTab('poste'); }}>
+            <span className="cmp-choice-ico" aria-hidden="true"><Icon name="table" size={26} /></span>
+            <span className="strong">Tout un poste</span>
+            <span className="small muted">Tous les gardiens, défenseurs, milieux ou attaquants dans un tableau à trier.</span>
+          </button>
+        </div>
+      ) : <SubNav items={TABS} value={tab} onChange={setTab} />}
 
-      {tab === 'poste' && <PositionTable initialPos={A?.pos ?? 'A'} />}
-      {tab === 'duo' && <>
+      {!landing && tab === 'poste' && <PositionTable initialPos={A?.pos ?? 'A'} />}
+      {!landing && tab === 'duo' && <>
 
       <div className="cmp-heads">
         {[0, 1].map(i => {

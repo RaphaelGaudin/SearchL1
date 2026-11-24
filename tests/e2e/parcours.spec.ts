@@ -338,6 +338,22 @@ test('Alerte compo : bouton sur la fiche joueur, message clair quand les notific
   expect(called).toBe(false);
 });
 
+test('Comparer depuis le menu : écran de choix entre deux joueurs et tout un poste', async ({ page }) => {
+  await page.goto('/#/classement');
+  await page.getByRole('button', { name: 'Plus de rubriques' }).click();
+  await page.getByRole('link', { name: /^Comparer/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Choisir un joueur' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Deux joueurs/ })).toBeVisible();
+  await page.getByRole('button', { name: /Tout un poste/ }).click();
+  await expect(page.locator('.ptable-t')).toBeVisible();
+  // Nouvelle ouverture depuis le menu : « Deux joueurs » ouvre le choix du premier joueur.
+  await page.locator('.tabbar').getByRole('link', { name: 'Classement' }).click();
+  await page.getByRole('button', { name: 'Plus de rubriques' }).click();
+  await page.getByRole('link', { name: /^Comparer/ }).click();
+  await page.getByRole('button', { name: /Deux joueurs/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Choisir un joueur' })).toBeVisible();
+});
+
 test('Comparer par poste : tableau de tous les joueurs, tri par colonne, période', async ({ page }) => {
   await page.goto('/#/comparer?t=poste');
   await expect(page.getByRole('dialog')).toHaveCount(0); // pas de choix de joueur imposé sur cet onglet

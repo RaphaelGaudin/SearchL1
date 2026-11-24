@@ -30,7 +30,7 @@ const TABS: { to: string; label: string; icon: IconName; match: RegExp }[] = [
 ];
 const MORE: { to: string; label: string; note: string; icon: IconName; soon?: boolean }[] = [
   { to: '/equipes', label: 'Équipes', note: '18 fiches club', icon: 'shield' },
-  { to: '/comparer', label: 'Comparer deux joueurs', note: 'stats côte à côte, points par journée', icon: 'player' },
+  { to: '/comparer', label: 'Comparer', note: 'deux joueurs, ou tout un poste', icon: 'player' },
   { to: '/historique', label: 'Historique', note: 'classements depuis 2014-15', icon: 'history' },
   { to: '/bareme', label: 'Calcul des points', note: 'barème du jeu et les mots de l\'app', icon: 'info' },
 ];
