@@ -6,7 +6,7 @@ type ByPos = Record<Position, number>;
 
 export const BAREME = {
   team: { h: { V: 8, N: 2, D: -2 }, a: { V: 12, N: 6, D: 2 }, gd: 2 },
-  cleanSheet: { G: 12, D: 4, M: 0, A: 0 } as ByPos,
+  cleanSheet: { G: 12, D: 6, M: 0, A: 0 } as ByPos,
   /** Minutes minimum pour le bonus clean sheet. */
   cleanSheetMin: 60,
   conceded: { G: -3, D: 0, M: 0, A: 0 } as ByPos,

@@ -4,16 +4,16 @@ import { Crest } from '../components/Crest.tsx';
 import { LargeTitle, NavBar } from '../components/Glass.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Avatar } from '../components/PlayerRow.tsx';
-import { Card, Empty, Estimate, Group, Price, Section } from '../components/ui.tsx';
+import { Card, Empty, Estimate, Group, Price, Section, SubNav, useTab } from '../components/ui.tsx';
 import { useData } from '../lib/data.tsx';
 import { norm, num, POSITION, POSITIONS } from '../lib/format.ts';
 import { CLUB_NAMES } from '../lib/clubs.ts';
 import type { Position } from '../lib/types.ts';
-import { windowStats, type Period, type PlayerStats, type WindowStats } from '../lib/model.ts';
+import { PERIODS, windowStats, type Period, type PlayerStats, type WindowStats } from '../lib/model.ts';
+import { PositionTable } from '../components/PositionTable.tsx';
 
 // Couleurs des deux joueurs (palette des graphiques, dans l'ordre).
 const COLOR = ['var(--s1)', 'var(--s2)'];
-const PERIODS: [Period, string][] = [['saison', 'Saison'], [5, '5 dernières J'], [3, '3 dernières J']];
 
 type Stat = { k: string; label: string; v: (w: WindowStats, p: PlayerStats) => number | null; fmt?: (w: WindowStats) => string; d?: number; low?: boolean; keepers?: boolean };
 const STATS: Stat[] = [
@@ -37,7 +37,9 @@ const STATS: Stat[] = [
   { k: 'cards', label: 'Cartons', v: w => w.y + 2 * w.rc, fmt: w => `${w.y} J · ${w.rc} R`, low: true },
 ];
 
-/** Comparer deux joueurs : stats côte à côte sur une période, et leurs points journée par journée. */
+const TABS: [string, string][] = [['duo', 'Deux joueurs'], ['poste', 'Par poste']];
+
+/** Comparer deux joueurs (stats côte à côte, points journée par journée), ou tous les joueurs d'un poste. */
 export function Compare() {
   const d = useData();
   const [params, setParams] = useSearchParams();
@@ -49,6 +51,7 @@ export function Compare() {
     setParams(prev => { const n = new URLSearchParams(prev); n.set(slot ? 'b' : 'a', String(p.id)); return n; }, { replace: true });
     setPicking(null);
   };
+  const [tab, setTab] = useTab(TABS);
   const [A, B] = ids;
   const w = [A, B].map(p => (p ? windowStats(p, period, d.lastRound) : null));
   const keepers = A?.pos === 'G' || B?.pos === 'G';
@@ -57,6 +60,10 @@ export function Compare() {
     <div className="page">
       <NavBar title="Comparer" back="Retour" fallback="/joueurs" />
       <LargeTitle sub={<>barème du jeu <Estimate /></>}>Comparer</LargeTitle>
+      <SubNav items={TABS} value={tab} onChange={setTab} />
+
+      {tab === 'poste' && <PositionTable initialPos={A?.pos ?? 'A'} />}
+      {tab === 'duo' && <>
 
       <div className="cmp-heads">
         {[0, 1].map(i => {
@@ -82,7 +89,7 @@ export function Compare() {
       {A && B ? (
         <>
           <div className="chips-row" role="group" aria-label="Période">
-            {PERIODS.map(([k, l]) => <button key={String(k)} type="button" className={`toggle${period === k ? ' on' : ''}`} aria-pressed={period === k} onClick={() => setPeriod(k)}>{l}</button>)}
+            {PERIODS.map(x => <button key={String(x.k)} type="button" className={`toggle${period === x.k ? ' on' : ''}`} aria-pressed={period === x.k} onClick={() => setPeriod(x.k)}>{x.label}</button>)}
           </div>
           <Section title="Statistiques" meta={period === 'saison' ? `J1 à J${d.lastRound}` : `J${w[0]!.from} à J${w[0]!.to}`}>
             <Card className="flush">
@@ -98,8 +105,9 @@ export function Compare() {
           </Group>
         </>
       ) : <Empty>Choisissez deux joueurs pour les comparer.</Empty>}
+      </>}
 
-      {picking != null && <Picker exclude={ids[picking ? 0 : 1]?.id} pos={ids[picking ? 0 : 1]?.pos} onPick={p => choose(picking, p)} onClose={() => setPicking(null)} />}
+      {tab === 'duo' && picking != null && <Picker exclude={ids[picking ? 0 : 1]?.id} pos={ids[picking ? 0 : 1]?.pos} onPick={p => choose(picking, p)} onClose={() => setPicking(null)} />}
     </div>
   );
 }

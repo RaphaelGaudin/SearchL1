@@ -232,8 +232,10 @@ test('Comparer deux joueurs depuis une fiche, départs et palmarès', async ({ p
   // Buts : le meilleur des deux est en gras.
   const goals = page.locator('.cmp-stat', { hasText: 'Buts' }).first();
   await expect(goals.locator('.strong')).toHaveCount(1);
-  await page.getByRole('button', { name: '5 dernières J' }).click();
-  await expect(page.getByRole('button', { name: '5 dernières J' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Dernière journée' }).click();
+  await expect(page.getByRole('button', { name: 'Dernière journée' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '5 dernières journées' }).click();
+  await expect(page.getByRole('button', { name: '5 dernières journées' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.duo svg path')).toHaveCount(2);
   await noHorizontalOverflow(page);
   await shot(page, '13-comparer');
@@ -334,6 +336,30 @@ test('Alerte compo : bouton sur la fiche joueur, message clair quand les notific
   await expect(page.getByRole('alert')).toContainText(/Notifications|notifications/);
   await expect(btn).toHaveAttribute('aria-pressed', 'false');
   expect(called).toBe(false);
+});
+
+test('Comparer par poste : tableau de tous les joueurs, tri par colonne, période', async ({ page }) => {
+  await page.goto('/#/comparer?t=poste');
+  await expect(page.getByRole('dialog')).toHaveCount(0); // pas de choix de joueur imposé sur cet onglet
+  await page.getByRole('tab', { name: 'Défenseurs' }).click();
+  const rows = page.locator('.ptable-t tbody tr');
+  await expect(rows.first()).toBeVisible();
+  const col = async (label: string) => {
+    const i = await page.locator('.ptable-t thead th').evaluateAll((ths, l) => ths.findIndex(th => th.textContent!.startsWith(l)), label);
+    return (await rows.locator(`td:nth-child(${i + 1})`).allInnerTexts()).map(t => Number(t.replace(',', '.')));
+  };
+  // Tri par tacles : décroissant, puis croissant au second toucher.
+  await page.getByRole('button', { name: 'Trier par Tacles réussis' }).click();
+  let v = await col('Tacles');
+  for (let i = 1; i < v.length; i++) expect(v[i]).toBeLessThanOrEqual(v[i - 1]);
+  await page.getByRole('button', { name: 'Trier par Tacles réussis' }).click();
+  v = await col('Tacles');
+  for (let i = 1; i < v.length; i++) expect(v[i]).toBeGreaterThanOrEqual(v[i - 1]);
+  // Période : dernière journée.
+  await page.getByRole('button', { name: 'Dernière journée' }).click();
+  await expect(page.getByText(/dernière journée · au moins \d+ min/)).toBeVisible();
+  await noHorizontalOverflow(page);
+  await shot(page, '15-comparer-par-poste');
 });
 
 test('Cibles tactiles d\'au moins 44 px', async ({ page }) => {

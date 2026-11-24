@@ -38,12 +38,12 @@ describe('barème du Championnat des Étoiles', () => {
     expect(matchPoints(log({ home: true, gf: 1, ga: 0, min: 45 }), 'A').team).toBeCloseTo((8 + 2) / 2);
   });
 
-  it('clean sheet : gardien 12, défenseur 4, à partir de 60 minutes', () => {
+  it('clean sheet : gardien 12, défenseur 6, à partir de 60 minutes', () => {
     expect(matchPoints(log({ gf: 1, ga: 0 }), 'G').team).toBe(8 + 2 + 12);
-    expect(matchPoints(log({ gf: 1, ga: 0 }), 'D').team).toBe(8 + 2 + 4);
+    expect(matchPoints(log({ gf: 1, ga: 0 }), 'D').team).toBe(8 + 2 + 6);
     expect(matchPoints(log({ gf: 1, ga: 0 }), 'M').team).toBe(8 + 2);
     expect(matchPoints(log({ gf: 1, ga: 0, min: 59 }), 'D').team).toBeCloseTo((8 + 2) * 59 / 90);
-    expect(matchPoints(log({ gf: 1, ga: 0, min: 60 }), 'D').team).toBeCloseTo((8 + 2 + 4) * 60 / 90);
+    expect(matchPoints(log({ gf: 1, ga: 0, min: 60 }), 'D').team).toBeCloseTo((8 + 2 + 6) * 60 / 90);
   });
 
   it('note : 2 × (note − 5), 0 si non noté', () => {
@@ -79,7 +79,7 @@ describe('barème du Championnat des Étoiles', () => {
   it('total = somme des sources', () => {
     const p = matchPoints(log({ home: false, gf: 2, ga: 0, r: 7.7, g: 1, tk: 2 }), 'D');
     expect(p.total).toBeCloseTo(p.team + p.note + p.actions + p.defense + p.cards);
-    expect(p.total).toBe((12 + 4 + 4) + 2 * (7 - 5) + 18 + 6);
+    expect(p.total).toBe((12 + 4 + 6) + 2 * (7 - 5) + 18 + 6);
   });
 
   it('feuille incomplète : seulement actions et cartons', () => {

@@ -1,10 +1,10 @@
-// Comparaison d'un joueur avec les autres joueurs de son poste sur la saison :
+// Comparaison d'un joueur avec les autres joueurs de son poste sur la période choisie (saison, 5, 3 ou dernière journée) :
 // rangs centiles (liste lisible = vue tableau) et nuage interactif de tous les joueurs pour la stat choisie.
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../lib/data.tsx';
 import { num, POSITION } from '../lib/format.ts';
-import { windowStats, type PlayerStats, type WindowStats } from '../lib/model.ts';
+import { PERIODS, windowStats, type Period, type PlayerStats, type WindowStats } from '../lib/model.ts';
 import type { Position } from '../lib/types.ts';
 
 interface Metric { k: string; label: string; unit: string; d: number; v: (s: WindowStats) => number | null; lowerIsBetter?: boolean }
@@ -42,14 +42,16 @@ export function PositionCompare({ player }: { player: PlayerStats }) {
   const metrics = BY_POS[player.pos].map(k => M[k]);
   const [sel, setSel] = useState(metrics[0].k);
   const [tip, setTip] = useState<number | null>(null);
+  const [period, setPeriod] = useState<Period>('saison');
 
-  // Groupe de comparaison : même poste, au moins 30 % du temps de jeu possible sur la saison.
+  // Groupe de comparaison : même poste, au moins 30 % du temps de jeu possible sur la période.
   const { pool, me, minMin } = useMemo(() => {
-    const minMin = Math.round(d.lastRound * 90 * 0.3);
-    const all: Entry[] = d.players.filter(p => p.pos === player.pos).map(p => ({ p, s: windowStats(p, 'saison', d.lastRound) }));
+    const span = period === 'saison' ? d.lastRound : Math.min(period, d.lastRound);
+    const minMin = Math.round(span * 90 * 0.3);
+    const all: Entry[] = d.players.filter(p => p.pos === player.pos && !p.left).map(p => ({ p, s: windowStats(p, period, d.lastRound) }));
     const pool = all.filter(e => e.s.min >= minMin || e.p.id === player.id);
-    return { pool, me: pool.find(e => e.p.id === player.id)!, minMin };
-  }, [d, player]);
+    return { pool, me: pool.find(e => e.p.id === player.id) ?? { p: player, s: windowStats(player, period, d.lastRound) }, minMin };
+  }, [d, player, period]);
 
   const rows = metrics.map(m => {
     const vals = pool.map(e => ({ e, v: m.v(e.s) })).filter((x): x is { e: Entry; v: number } => x.v != null);
@@ -106,8 +108,11 @@ export function PositionCompare({ player }: { player: PlayerStats }) {
 
   return (
     <div className="cmp-pos">
+      <div className="chips-row" role="group" aria-label="Période">
+        {PERIODS.map(x => <button key={String(x.k)} type="button" className={`toggle${period === x.k ? ' on' : ''}`} aria-pressed={period === x.k} onClick={() => { setPeriod(x.k); setTip(null); }}>{x.label}</button>)}
+      </div>
       <p className="small muted">
-        Saison, parmi les {pool.length} {PLURAL[player.pos]} ayant joué au moins {minMin} minutes. Touchez une stat pour voir où se situe {player.n}.
+        {PERIODS.find(x => x.k === period)!.label}, parmi les {pool.length} {PLURAL[player.pos]} ayant joué au moins {minMin} minutes. Touchez une stat pour voir où se situe {player.n}.
         {me.s.min < minMin && ' Attention : peu de temps de jeu, comparaison fragile.'}
       </p>
 
